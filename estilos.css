@@ -1,0 +1,201 @@
+/* 🌈 Fondo general */
+body {
+  background: linear-gradient(135deg, #eef2ff, #f8fafc);
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* 🔥 Sidebar moderno */
+.sidebar {
+  height: 100vh;
+  background: linear-gradient(180deg, #1e293b, #0f172a);
+  color: white;
+  padding: 20px 10px;
+  box-shadow: 4px 0 10px rgba(0,0,0,0.2);
+}
+
+.sidebar h5 {
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.sidebar button {
+  border-radius: 10px;
+  padding: 10px;
+  transition: all 0.3s ease;
+}
+
+.sidebar button:hover {
+  background: #3b82f6;
+  transform: translateX(5px);
+}
+
+/* 📦 Contenido */
+.contenido {
+  padding: 30px;
+}
+
+/* 🧾 Cards elegantes */
+.card {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  animation: fadeIn 0.4s ease;
+  background: white;
+}
+
+.card h5 {
+  font-weight: bold;
+  color: #1e293b;
+}
+
+/* ✨ Animación */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.seccion {
+  display: none;
+}
+
+.seccion.activa {
+  display: block;
+}
+
+/* 🔘 Botones */
+.btn {
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  transform: scale(1.05);
+}
+
+/* 🎯 Botones personalizados */
+.btn-primary {
+  background: #3b82f6;
+  border: none;
+}
+
+.btn-success {
+  background: #22c55e;
+  border: none;
+}
+
+.btn-warning {
+  background: #f59e0b;
+  border: none;
+}
+
+.btn-danger {
+  background: #ef4444;
+  border: none;
+}
+
+.btn-info {
+  background: #06b6d4;
+  border: none;
+}
+
+/* 📥 Inputs */
+.form-control, .form-select {
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  transition: 0.2s;
+}
+
+.form-control:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 5px rgba(59,130,246,0.5);
+}
+
+/* 📊 CONTENEDOR TABLA */
+.tabla-responsive {
+  overflow-x: auto;
+  border-radius: 12px;
+}
+
+/* 📊 TABLA PRO (ARREGLADA) */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* 🔥 ENCABEZADO */
+.table thead {
+  background: linear-gradient(90deg, #1e293b, #334155);
+}
+
+.table thead th {
+  color: white !important;
+  font-weight: bold;
+  text-align: center;
+  padding: 12px;
+  border: none;
+  white-space: nowrap;
+}
+
+/* 📄 FILAS */
+.table tbody td {
+  padding: 10px;
+  text-align: center;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+/* 🎨 FILAS ALTERNADAS */
+.table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+/* 🟦 HOVER */
+.table tbody tr:hover {
+  background: #e0f2fe;
+  transition: 0.2s;
+}
+
+/* 🔲 BORDES SUAVES */
+.table-bordered > :not(caption) > * > * {
+  border-width: 0;
+}
+
+/* 📌 Modal */
+.modal-content {
+  border-radius: 15px;
+}
+
+.modal-header {
+  border-top-left-radius: 15px;
+  border-top-right-radius: 15px;
+}
+
+/* 🔄 Scroll horizontal bonito */
+.tabla-responsive::-webkit-scrollbar {
+  height: 8px;
+}
+
+.tabla-responsive::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 10px;
+}
+
+/* 📱 Responsive */
+@media (max-width: 768px) {
+  .sidebar {
+    height: auto;
+  }
+
+  .contenido {
+    padding: 15px;
+  }
+}
