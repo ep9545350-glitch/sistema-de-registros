@@ -2,14 +2,14 @@ function generarPDFSeleccionado() {
 
   let data = datosPorHoja[hojaActual];
   if (!data || data.length === 0) {
-    alert("No hay datos");
+    mostrarAlerta("No hay datos para exportar", "danger");
     return;
   }
 
   const checks = document.querySelectorAll(".columnaCheck:checked");
 
   if (checks.length === 0) {
-    alert("Selecciona al menos una columna");
+    mostrarAlerta("Selecciona al menos una columna", "warning");
     return;
   }
 
@@ -61,7 +61,7 @@ function generarPDFSeleccionado() {
     if (palabras.length >= 2) {
       let mitad = Math.ceil(palabras.length / 2);
       return palabras.slice(0, mitad).join(" ") + "\n" +
-             palabras.slice(mitad).join(" ");
+        palabras.slice(mitad).join(" ");
     }
     return h;
   });
@@ -79,6 +79,11 @@ function generarPDFSeleccionado() {
         valor = (valorExcel !== undefined && valorExcel !== "") ? valorExcel : index + 1;
       } else {
         valor = row[h] ?? "";
+      }
+
+      // 🔥 NORMALIZAR MATRIMONIO EN PDF
+      if (h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")) {
+        valor = normalizarTipoMatrimonio(valor);
       }
 
       // 🔥 limpiar espacios SOLO en registro
@@ -141,39 +146,39 @@ function generarPDFSeleccionado() {
 
   const esResultadosLaboratorio = hojaActual.toLowerCase().includes("laboratorio");
 
-if (esResultadosLaboratorio) {
+  if (esResultadosLaboratorio) {
 
-  pdf.setFontSize(7);
+    pdf.setFontSize(7);
 
-  let totalWidth = 0;
+    let totalWidth = 0;
 
-  headersSeleccionados.forEach((h, i) => {
+    headersSeleccionados.forEach((h, i) => {
 
-    let maxWidth = pdf.getTextWidth(h);
+      let maxWidth = pdf.getTextWidth(h);
 
-    filas.forEach(f => {
-      let texto = (f[i] || "").toString().trim();
-      let w = pdf.getTextWidth(texto);
-      if (w > maxWidth) maxWidth = w;
+      filas.forEach(f => {
+        let texto = (f[i] || "").toString().trim();
+        let w = pdf.getTextWidth(texto);
+        if (w > maxWidth) maxWidth = w;
+      });
+
+      maxWidth += 4; // padding
+
+      // límites para que no se desborde feo
+      maxWidth = Math.max(10, Math.min(maxWidth, 80));
+
+      columnStyles[i] = { cellWidth: maxWidth };
+      totalWidth += maxWidth;
     });
 
-    maxWidth += 4; // padding
+    // 🔥 ajustar todo al ancho de la hoja
+    const pageWidth = pdf.internal.pageSize.getWidth() - 20;
+    const scale = pageWidth / totalWidth;
 
-    // límites para que no se desborde feo
-    maxWidth = Math.max(10, Math.min(maxWidth, 80));
-
-    columnStyles[i] = { cellWidth: maxWidth };
-    totalWidth += maxWidth;
-  });
-
-  // 🔥 ajustar todo al ancho de la hoja
-  const pageWidth = pdf.internal.pageSize.getWidth() - 20;
-  const scale = pageWidth / totalWidth;
-
-  Object.keys(columnStyles).forEach(i => {
-    columnStyles[i].cellWidth *= scale;
-  });
-}
+    Object.keys(columnStyles).forEach(i => {
+      columnStyles[i].cellWidth *= scale;
+    });
+  }
 
   // =====================
   // TABLA (TODO EN UNA HOJA)
@@ -239,11 +244,19 @@ if (esResultadosLaboratorio) {
 }
 function exportarDashboardPDF() {
 
+  let filtroMes = document.getElementById("filtroMesDashboard").value;
+
+  // 🔥 VALIDACIÓN
+  if (!filtroMes) {
+    mostrarAlerta("Debes seleccionar un mes antes de exportar", "warning");
+    return;
+  }
+
   const canvasBarra = document.getElementById("graficoBarras");
   const canvasPie = document.getElementById("graficoTorta");
 
   if (!canvasBarra || !canvasPie) {
-    alert("No hay gráficos");
+    mostrarAlerta("No hay gráficos disponibles", "danger");
     return;
   }
 
@@ -266,23 +279,37 @@ function exportarDashboardPDF() {
     h.toLowerCase().includes("fecha")
   );
 
-  let filtroMes = document.getElementById("filtroMesDashboard").value;
+
 
   let conteo = {};
+  let totalMatrimonios = 0;
 
   data.forEach(row => {
 
     if (filtroMes && campoFecha) {
       let fecha = row[campoFecha];
 
-      if (fecha && fecha.includes("/")) {
+      if (!fecha) return;
+
+      if (typeof fecha === "string" && fecha.includes("/")) {
         let partes = fecha.split("/");
         let formato = `${partes[2]}-${partes[1]}`;
+        if (formato !== filtroMes) return;
+      } else {
+        let f = new Date(fecha);
+        if (isNaN(f)) return;
+
+        let formato = `${f.getFullYear()}-${(f.getMonth() + 1)
+          .toString()
+          .padStart(2, "0")}`;
+
         if (formato !== filtroMes) return;
       }
     }
 
-    let tipo = (row[campoTipo] || "").toString().trim().toUpperCase();
+    totalMatrimonios++;
+
+    let tipo = normalizarTipoMatrimonio(row[campoTipo]);
     if (!tipo) return;
 
     if (!conteo[tipo]) conteo[tipo] = 0;
@@ -301,26 +328,63 @@ function exportarDashboardPDF() {
   ];
 
   // =====================
-  // 📅 TÍTULO
+  // 🎯 HEADER BONITO
   // =====================
-  let textoFecha = "REPORTE GENERAL";
+  pdf.setFillColor(13, 110, 253);
+  pdf.rect(0, 0, pageWidth, 20, "F");
 
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFontSize(16);
+  pdf.text("REPORTE DE MATRIMONIOS", 14, 12);
+
+  pdf.setFontSize(10);
+  let fechaActual = new Date().toLocaleDateString();
+  pdf.text(`Fecha: ${fechaActual}`, pageWidth - 50, 12);
+
+  // =====================
+  // 📅 SUBTÍTULO
+  // =====================
+  pdf.setTextColor(0, 0, 0);
+  pdf.setFontSize(12);
+
+  let textoFecha = "Resumen General";
   if (filtroMes) {
     const partes = filtroMes.split("-");
-    textoFecha = `REPORTE DEL MES: ${partes[1]}/${partes[0]}`;
+    textoFecha = `Mes: ${partes[1]}/${partes[0]}`;
   }
 
-  pdf.setFontSize(16);
-  pdf.text(textoFecha, 14, 15);
+  pdf.text(textoFecha, 14, 28);
 
   // =====================
-  // 🟦 TARJETAS CENTRADAS
+  // 🟫 TARJETA TOTAL DESTACADA
   // =====================
-  let x = 10;
-  let y = 25;
-  let ancho = 40;
-  let alto = 25;
-  let espacio = 5;
+  pdf.setFillColor(33, 37, 41);
+  pdf.roundedRect(14, 32, 60, 30, 4, 4, "F");
+
+  pdf.setTextColor(255, 255, 255);
+
+  pdf.setFontSize(18);
+  pdf.text(
+    totalMatrimonios.toString(),
+    14 + 30 - pdf.getTextWidth(totalMatrimonios.toString()) / 2,
+    45
+  );
+
+  pdf.setFontSize(10);
+  pdf.text(
+    "TOTAL MATRIMONIOS",
+    14 + 30 - pdf.getTextWidth("TOTAL MATRIMONIOS") / 2,
+    55
+  );
+
+  // =====================
+  // 🟦 TARJETAS POR TIPO
+  // =====================
+  let x = 80;
+  let y = 32;
+  let ancho = 45;
+  let alto = 30;
+  let espacio = 8;
 
   labels.forEach((tipo, i) => {
 
@@ -330,30 +394,35 @@ function exportarDashboardPDF() {
     let g = parseInt(colorHex.substring(3, 5), 16);
     let b = parseInt(colorHex.substring(5, 7), 16);
 
+    // sombra simulada
+    pdf.setFillColor(200, 200, 200);
+    pdf.roundedRect(x + 1, y + 1, ancho, alto, 4, 4, "F");
+
+    // tarjeta
     pdf.setFillColor(r, g, b);
-    pdf.roundedRect(x, y, ancho, alto, 3, 3, "F");
+    pdf.roundedRect(x, y, ancho, alto, 4, 4, "F");
 
     pdf.setTextColor(255, 255, 255);
 
-    // 🔥 CENTRAR VALOR
-    pdf.setFontSize(14);
-    let textoValor = valores[i].toString();
-    let textWidthValor = pdf.getTextWidth(textoValor);
-    let centroX = x + (ancho / 2) - (textWidthValor / 2);
+    pdf.setFontSize(16);
+    let val = valores[i].toString();
+    pdf.text(
+      val,
+      x + (ancho / 2) - (pdf.getTextWidth(val) / 2),
+      y + 12
+    );
 
-    pdf.text(textoValor, centroX, y + 10);
-
-    // 🔥 CENTRAR TIPO
-    pdf.setFontSize(9);
-    let textWidthTipo = pdf.getTextWidth(tipo);
-    let centroTipo = x + (ancho / 2) - (textWidthTipo / 2);
-
-    pdf.text(tipo, centroTipo, y + 18);
+    pdf.setFontSize(10);
+    pdf.text(
+      tipo,
+      x + (ancho / 2) - (pdf.getTextWidth(tipo) / 2),
+      y + 22
+    );
 
     x += ancho + espacio;
 
     if (x + ancho > pageWidth) {
-      x = 10;
+      x = 80;
       y += alto + espacio;
     }
   });
@@ -364,26 +433,54 @@ function exportarDashboardPDF() {
   const imgBarra = canvasBarra.toDataURL("image/png", 1.0);
   const imgPie = canvasPie.toDataURL("image/png", 1.0);
 
-  let inicioY = y + alto + 10;
+  let inicioY = y + alto + 15;
 
   const imgWidth = pageWidth / 2 - 20;
 
-  // 📊 BARRAS (RECTANGULAR OK)
-  pdf.addImage(imgBarra, "PNG", 10, inicioY, imgWidth, 80);
+  // barras
+  pdf.addImage(imgBarra, "PNG", 14, inicioY, imgWidth, 80);
 
-  // 🥧 TORTA (🔥 CUADRADO PARA NO DEFORMAR)
-  const sizePie = 80; // mismo ancho y alto
+  // torta (cuadrado perfecto)
+  pdf.addImage(imgPie, "PNG", pageWidth / 2 + 5, inicioY, 80, 80);
 
-  pdf.addImage(
-    imgPie,
-    "PNG",
-    pageWidth / 2 + 5,
-    inicioY,
-    sizePie,
-    sizePie
+  // =====================
+  // 📌 FOOTER
+  // =====================
+  pdf.setFontSize(9);
+  pdf.setTextColor(120);
+  pdf.text(
+    "Reporte generado automáticamente",
+    14,
+    pdf.internal.pageSize.getHeight() - 5
   );
 
-  pdf.save("dashboard_pro.pdf");
+  pdf.save("dashboard_matrimonios_pro.pdf");
+}
 
-  
+function normalizarTipoMatrimonio(valor) {
+  if (!valor) return "";
+
+  let v = valor.toString().trim().toLowerCase();
+
+  if (v === "p") return "PAGADO";
+  if (v === "m") return "MASIVO";
+
+  return valor.toString().toUpperCase();
+}
+function mostrarAlerta(mensaje, tipo = "danger") {
+  const contenedor = document.getElementById("alertas");
+
+  if (!contenedor) return;
+
+  contenedor.innerHTML = `
+    <div class="alert alert-${tipo} alert-dismissible fade show shadow" role="alert"
+         style="border-left: 5px solid ${tipo === "danger" ? "#dc3545" : "#ffc107"};">
+      <strong>${tipo === "danger" ? "❌ Error:" : "⚠️ Atención:"}</strong> ${mensaje}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  `;
+
+  setTimeout(() => {
+    contenedor.innerHTML = "";
+  }, 4000);
 }

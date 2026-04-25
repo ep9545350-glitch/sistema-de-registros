@@ -2,6 +2,7 @@ const COLORES_GRAFICOS = [
   "#0d6efd", "#198754", "#ffc107", "#dc3545",
   "#6f42c1", "#20c997", "#fd7e14", "#0dcaf0"
 ];
+let modoFiltrado = false;
 let datosPorHoja = {};
 let headersPorHoja = {};
 let hojaActual = "";
@@ -89,6 +90,17 @@ function detectarCamposCompartidos() {
   });
 }
 
+function normalizarTipoMatrimonio(valor) {
+  if (!valor) return "";
+
+  let v = valor.toString().trim().toLowerCase();
+
+  if (v === "p") return "PAGADO";
+  if (v === "m") return "MASIVO";
+
+  return valor.toString().toUpperCase();
+}
+
 // =====================
 // LEER EXCEL
 // =====================
@@ -154,11 +166,18 @@ function handleFile(e) {
       jsonData.forEach(row => {
         for (let key in row) {
           let valor = row[key];
+          let nombreCampo = key.toLowerCase();
 
+          // 🔥 FORMATEAR FECHAS
           if (typeof valor === "number" && valor > 30000 && valor < 60000) {
             row[key] = soloFecha(valor);
-          } else if (key.toLowerCase().includes("fecha")) {
+          } else if (nombreCampo.includes("fecha")) {
             row[key] = soloFecha(valor);
+          }
+
+          // 🔥 NORMALIZAR TIPO MATRIMONIO
+          if (nombreCampo.replace(/\s+/g, "").includes("matrimonio")) {
+            row[key] = normalizarTipoMatrimonio(valor);
           }
         }
       });
@@ -166,6 +185,7 @@ function handleFile(e) {
       datosPorHoja[hoja] = jsonData;
       headersGlobales = [...new Set([...headersGlobales, ...headers])];
     });
+
 
     detectarCamposCompartidos();
 
@@ -344,6 +364,12 @@ function mostrarTabla(data) {
 
       } else {
         let valor = row[h] ?? "";
+
+        // 🔥 NORMALIZAR MATRIMONIO EN TABLA
+        if (h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")) {
+          valor = normalizarTipoMatrimonio(valor);
+        }
+
         filas += `<td>${valor}</td>`;
       }
 
@@ -366,11 +392,13 @@ function mostrarTablaPaginada(data) {
 }
 
 function siguientePagina() {
+  if (modoFiltrado) return;
   paginaActual++;
   mostrarTablaPaginada(datosPorHoja[hojaActual]);
 }
 
 function anteriorPagina() {
+  if (modoFiltrado) return;
   if (paginaActual > 1) {
     paginaActual--;
     mostrarTablaPaginada(datosPorHoja[hojaActual]);
@@ -391,8 +419,7 @@ function mostrarTablaManual() {
 // =====================
 function aplicarFiltros() {
 
-  let tipoInput = document.getElementById("filtroTipoMatrimonio");
-  let tipoMatrimonio = tipoInput ? tipoInput.value.toLowerCase() : "";
+  modoFiltrado = true; // 🔥 ACTIVAR MODO FILTRO
 
   let data = datosPorHoja[hojaActual];
   if (!data || data.length === 0) return;
@@ -437,20 +464,32 @@ function aplicarFiltros() {
 
   document.getElementById("contenedorTabla").style.display = "block";
 
-  paginaActual = 1;
-  mostrarTablaPaginada(filtrado);
+  // 🔥 MOSTRAR TODO (SIN PAGINACIÓN)
+  mostrarTabla(filtrado);
+
+  // 🔥 OCULTAR BOTONES
+  document.getElementById("paginacion").style.display = "none";
 }
 
 // =====================
 // LIMPIAR
 // =====================
 function limpiarFiltros() {
+
+  modoFiltrado = false; // 🔥 DESACTIVAR FILTRO
+
   document.getElementById("filtroNombre").value = "";
   document.getElementById("filtroFechaDesde").value = "";
   document.getElementById("filtroFechaHasta").value = "";
-  document.getElementById("filtroTipoMatrimonio").value = "";
 
+  document.getElementById("contenedorTabla").style.display = "block";
+
+  // 🔥 VOLVER A PAGINACIÓN NORMAL
+  paginaActual = 1;
   mostrarTablaPaginada(datosPorHoja[hojaActual]);
+
+  // 🔥 MOSTRAR BOTONES
+  document.getElementById("paginacion").style.display = "block";
 }
 
 // =====================
@@ -478,7 +517,13 @@ function agregarDato() {
         ? document.getElementById(`global_${h}`)
         : document.getElementById(`${hoja}_${h}`);
 
-      nuevo[h] = input?.value || "";
+      let valor = input?.value || "";
+
+      if (h.toLowerCase().includes("matrimonio")) {
+        valor = normalizarTipoMatrimonio(valor);
+      }
+
+      nuevo[h] = valor;
 
       if (!camposCompartidos[h] && input) {
         input.value = "";
@@ -536,6 +581,20 @@ function generarDashboard() {
   const contenedor = document.getElementById("dashboardMatrimonio");
   contenedor.innerHTML = "";
 
+  let filtroMes = document.getElementById("filtroMesDashboard").value;
+
+  // 🔥 VALIDACIÓN OBLIGATORIA
+  if (!filtroMes) {
+    contenedor.innerHTML = `
+      <div class="alert alert-danger text-center">
+        ⚠️ Debe seleccionar un mes antes de generar el dashboard
+      </div>
+    `;
+    return;
+  }
+
+  
+
   let data = datosPorHoja[hojaActual];
   if (!data || data.length === 0) return;
 
@@ -550,56 +609,102 @@ function generarDashboard() {
   );
 
   if (!campoTipo) {
-    contenedor.innerHTML = "<p>No existe campo tipo matrimonio</p>";
+    contenedor.innerHTML = "<p>Seleccione una fecha por favor</p>";
     return;
   }
 
-  let filtroMes = document.getElementById("filtroMesDashboard").value;
+ 
 
   let conteo = {};
+  let totalMatrimonios = 0;
 
   data.forEach(row => {
 
+    let pasaFiltroMes = true;
+
+    // ======================
+    // 🔥 FILTRO POR MES
+    // ======================
     if (filtroMes && campoFecha) {
       let fecha = row[campoFecha];
 
-      if (fecha && fecha.includes("/")) {
-        let partes = fecha.split("/");
-        let formato = `${partes[2]}-${partes[1]}`;
+      if (!fecha) return;
 
-        if (formato !== filtroMes) return;
+      if (typeof fecha === "string" && fecha.includes("/")) {
+        let partes = fecha.split("/");
+        let formato = `${partes[2]}-${partes[1]}`; // yyyy-mm
+
+        if (formato !== filtroMes) {
+          pasaFiltroMes = false;
+        }
+      } else {
+        let f = new Date(fecha);
+        if (isNaN(f)) return;
+
+        let formato = `${f.getFullYear()}-${(f.getMonth() + 1).toString().padStart(2, "0")}`;
+
+        if (formato !== filtroMes) {
+          pasaFiltroMes = false;
+        }
       }
     }
 
-    let tipo = (row[campoTipo] || "").toString().trim().toUpperCase();
+    if (!pasaFiltroMes) return;
 
+    // ======================
+    // 🔥 CONTAR TOTAL (YA FILTRADO POR MES)
+    // ======================
+    totalMatrimonios++;
+
+    // ======================
+    // 🔥 CONTAR POR TIPO
+    // ======================
+    let tipo = normalizarTipoMatrimonio(row[campoTipo]);
     if (!tipo) return;
 
     if (!conteo[tipo]) conteo[tipo] = 0;
-
     conteo[tipo]++;
   });
 
-  // 🔥 TARJETAS
+  // ======================
+  // 🔥 TARJETA TOTAL (POR MES)
+  // ======================
+  contenedor.innerHTML += `
+    <div class="col-md-3">
+      <div class="card text-center shadow"
+           style="background:black; color:white;">
+        <div class="card-body">
+          <h3>${totalMatrimonios}</h3>
+          <p> Matrimonios ${filtroMes ? `` : ""}</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ======================
+  // 🔥 TARJETAS POR TIPO
+  // ======================
   Object.keys(conteo).forEach((tipo, i) => {
 
     let color = COLORES_GRAFICOS[i % COLORES_GRAFICOS.length];
 
     contenedor.innerHTML += `
-    <div class="col-md-3">
-      <div class="card text-center shadow"
-           style="cursor:pointer; background:${color}; color:white;"
-           onclick="filtrarPorTipo('${tipo}')">
-        <div class="card-body">
-          <h3>${conteo[tipo]}</h3>
-          <p>Tipo ${tipo}</p>
+      <div class="col-md-3">
+        <div class="card text-center shadow"
+             style="cursor:pointer; background:${color}; color:white;"
+             onclick="filtrarPorTipo('${tipo}')">
+          <div class="card-body">
+            <h3>${conteo[tipo]}</h3>
+            <p> ${tipo}</p>
+          </div>
         </div>
       </div>
-    </div>
-  `;
+    `;
   });
 
-  // 🔥 DATOS PARA GRÁFICOS
+  // ======================
+  // 📊 DATOS PARA GRÁFICOS
+  // ======================
   let labels = Object.keys(conteo);
   let valores = Object.values(conteo);
 
@@ -607,7 +712,9 @@ function generarDashboard() {
   if (window.graficoBarra) window.graficoBarra.destroy();
   if (window.graficoPie) window.graficoPie.destroy();
 
-  // 📊 BARRAS
+  // ======================
+  // 📊 GRÁFICO DE BARRAS
+  // ======================
   const ctxBarra = document.getElementById("graficoBarras");
 
   window.graficoBarra = new Chart(ctxBarra, {
@@ -625,7 +732,9 @@ function generarDashboard() {
     }
   });
 
-  // 🥧 TORTA
+  // ======================
+  // 🥧 GRÁFICO DE TORTA
+  // ======================
   const ctxPie = document.getElementById("graficoTorta");
 
   window.graficoPie = new Chart(ctxPie, {
@@ -641,8 +750,7 @@ function generarDashboard() {
       responsive: true
     }
   });
-}
-
+};
 function filtrarPorTipo(tipo) {
 
   let data = datosPorHoja[hojaActual];

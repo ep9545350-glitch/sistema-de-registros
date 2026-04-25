@@ -183,6 +183,7 @@
 </head>
 
 <body>
+  <div id="alertas" style="position: fixed; top: 20px; right: 20px; z-index: 9999; width: 300px;"></div>
   <button class="toggle-btn d-md-none" onclick="toggleMenu()">☰</button>
 
   <div class="container-fluid">
@@ -190,7 +191,7 @@
 
       <!-- MENÚ -->
       <div class="col-md-2 sidebar">
-        <h5 class="text-center">📊 Menú</h5>
+        <h5 class="text-center"> Menú </h5>
 
         <button class="btn btn-dark" onclick="mostrarSeccion('excel')">Subir Excel</button>
         <button class="btn btn-dark" onclick="mostrarSeccion('formulario')">Formulario</button>
@@ -200,6 +201,8 @@
 
       <!-- CONTENIDO -->
       <div class="col-md-10 contenido">
+
+        <div id="alertas" class="mb-3"></div>
 
         <!-- DASHBOARD -->
         <div id="dashboard" class="seccion card mb-3">
@@ -260,7 +263,7 @@
         <div id="tabla" class="seccion card mb-3">
           <div class="card-body">
 
-            <h5>Tabla y Filtros</h5>
+            <h5>Registros </h5>
 
             <!-- SELECTOR -->
             <select id="selectorHoja" class="form-select mb-2"></select>
@@ -282,7 +285,7 @@
                 <input type="date" id="filtroFechaHasta" class="form-control">
               </div>
 
-              
+
 
             </div>
 
@@ -301,7 +304,7 @@
             </div>
 
             <!-- PAGINACIÓN -->
-            <div class="mt-3">
+            <div class="mt-3" id="paginacion">
               <button class="btn btn-secondary" onclick="anteriorPagina()">Anterior</button>
               <button class="btn btn-secondary" onclick="siguientePagina()">Siguiente</button>
             </div>
