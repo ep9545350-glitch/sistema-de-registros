@@ -237,3 +237,153 @@ if (esResultadosLaboratorio) {
 
   pdf.save("reporte.pdf");
 }
+function exportarDashboardPDF() {
+
+  const canvasBarra = document.getElementById("graficoBarras");
+  const canvasPie = document.getElementById("graficoTorta");
+
+  if (!canvasBarra || !canvasPie) {
+    alert("No hay gráficos");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF("landscape", "mm", "a4");
+
+  const pageWidth = pdf.internal.pageSize.getWidth();
+
+  // =====================
+  // 📊 DATOS
+  // =====================
+  let data = datosPorHoja[hojaActual];
+  const headers = headersPorHoja[hojaActual];
+
+  let campoTipo = headers.find(h =>
+    h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")
+  );
+
+  let campoFecha = headers.find(h =>
+    h.toLowerCase().includes("fecha")
+  );
+
+  let filtroMes = document.getElementById("filtroMesDashboard").value;
+
+  let conteo = {};
+
+  data.forEach(row => {
+
+    if (filtroMes && campoFecha) {
+      let fecha = row[campoFecha];
+
+      if (fecha && fecha.includes("/")) {
+        let partes = fecha.split("/");
+        let formato = `${partes[2]}-${partes[1]}`;
+        if (formato !== filtroMes) return;
+      }
+    }
+
+    let tipo = (row[campoTipo] || "").toString().trim().toUpperCase();
+    if (!tipo) return;
+
+    if (!conteo[tipo]) conteo[tipo] = 0;
+    conteo[tipo]++;
+  });
+
+  const labels = Object.keys(conteo);
+  const valores = Object.values(conteo);
+
+  // =====================
+  // 🎨 COLORES
+  // =====================
+  const colores = [
+    "#0d6efd", "#198754", "#ffc107", "#dc3545",
+    "#6f42c1", "#20c997", "#fd7e14", "#0dcaf0"
+  ];
+
+  // =====================
+  // 📅 TÍTULO
+  // =====================
+  let textoFecha = "REPORTE GENERAL";
+
+  if (filtroMes) {
+    const partes = filtroMes.split("-");
+    textoFecha = `REPORTE DEL MES: ${partes[1]}/${partes[0]}`;
+  }
+
+  pdf.setFontSize(16);
+  pdf.text(textoFecha, 14, 15);
+
+  // =====================
+  // 🟦 TARJETAS CENTRADAS
+  // =====================
+  let x = 10;
+  let y = 25;
+  let ancho = 40;
+  let alto = 25;
+  let espacio = 5;
+
+  labels.forEach((tipo, i) => {
+
+    let colorHex = colores[i % colores.length];
+
+    let r = parseInt(colorHex.substring(1, 3), 16);
+    let g = parseInt(colorHex.substring(3, 5), 16);
+    let b = parseInt(colorHex.substring(5, 7), 16);
+
+    pdf.setFillColor(r, g, b);
+    pdf.roundedRect(x, y, ancho, alto, 3, 3, "F");
+
+    pdf.setTextColor(255, 255, 255);
+
+    // 🔥 CENTRAR VALOR
+    pdf.setFontSize(14);
+    let textoValor = valores[i].toString();
+    let textWidthValor = pdf.getTextWidth(textoValor);
+    let centroX = x + (ancho / 2) - (textWidthValor / 2);
+
+    pdf.text(textoValor, centroX, y + 10);
+
+    // 🔥 CENTRAR TIPO
+    pdf.setFontSize(9);
+    let textWidthTipo = pdf.getTextWidth(tipo);
+    let centroTipo = x + (ancho / 2) - (textWidthTipo / 2);
+
+    pdf.text(tipo, centroTipo, y + 18);
+
+    x += ancho + espacio;
+
+    if (x + ancho > pageWidth) {
+      x = 10;
+      y += alto + espacio;
+    }
+  });
+
+  // =====================
+  // 📊 GRÁFICOS
+  // =====================
+  const imgBarra = canvasBarra.toDataURL("image/png", 1.0);
+  const imgPie = canvasPie.toDataURL("image/png", 1.0);
+
+  let inicioY = y + alto + 10;
+
+  const imgWidth = pageWidth / 2 - 20;
+
+  // 📊 BARRAS (RECTANGULAR OK)
+  pdf.addImage(imgBarra, "PNG", 10, inicioY, imgWidth, 80);
+
+  // 🥧 TORTA (🔥 CUADRADO PARA NO DEFORMAR)
+  const sizePie = 80; // mismo ancho y alto
+
+  pdf.addImage(
+    imgPie,
+    "PNG",
+    pageWidth / 2 + 5,
+    inicioY,
+    sizePie,
+    sizePie
+  );
+
+  pdf.save("dashboard_pro.pdf");
+
+  
+}
