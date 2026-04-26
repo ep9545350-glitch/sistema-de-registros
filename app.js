@@ -2,6 +2,13 @@ const COLORES_GRAFICOS = [
   "#0d6efd", "#198754", "#ffc107", "#dc3545",
   "#6f42c1", "#20c997", "#fd7e14", "#0dcaf0"
 ];
+
+let filtroGlobal = {
+  nombre: "",
+  desde: "",
+  hasta: "",
+  tipoMatrimonio: ""
+};
 let modoFiltrado = false;
 let datosPorHoja = {};
 let headersPorHoja = {};
@@ -38,6 +45,21 @@ function esCampoOrden(nombre) {
   );
 }
 
+function inicializarVista() {
+  hojaActual = Object.keys(datosPorHoja)[0];
+
+  paginaActual = 1;
+  modoFiltrado = false;
+
+  document.getElementById("contenedorTabla").style.display = "none";
+  document.getElementById("paginacion").style.display = "none";
+
+  cargarSelector();
+  generarFormulario();
+
+  cargarTiposMatrimonio();
+}
+
 // =====================
 // CARGAR DATOS GUARDADOS
 // =====================
@@ -58,15 +80,11 @@ window.onload = function () {
 
     detectarCamposCompartidos();
 
-    hojaActual = Object.keys(datosPorHoja)[0];
-
-    generarFormulario();
-    cargarSelector();
-
-    document.getElementById("contenedorTabla").style.display = "block";
-    mostrarTablaPaginada(datosPorHoja[hojaActual]);
-    cargarTiposMatrimonio();
+    inicializarVista();
   }
+
+  document.getElementById("contenedorTabla").style.display = "none";
+  document.getElementById("paginacion").style.display = "none";
 };
 
 // =====================
@@ -139,11 +157,7 @@ function handleFile(e) {
       let jsonData = XLSX.utils.sheet_to_json(sheet, { raw: true });
 
       // 🔥 ELIMINAR COLUMNAS VACÍAS
-      headers = headers.filter(h => {
-        if (!h || h.trim() === "") return false;
-
-        return jsonData.some(row => row[h] !== undefined && row[h] !== "");
-      });
+      headers = headers.filter(h => h && h.trim() !== "");
 
       // 🔥 👉 AGREGA ESTO AQUÍ 👇
       jsonData = jsonData.map(row => {
@@ -299,36 +313,55 @@ function cargarSelector() {
   selector.onchange = () => {
     hojaActual = selector.value;
     paginaActual = 1;
-    mostrarTablaPaginada(datosPorHoja[hojaActual]);
+    modoFiltrado = false;
+
+    filtroGlobal = {
+      nombre: "",
+      desde: "",
+      hasta: "",
+      tipoMatrimonio: ""
+    };
+
+    document.getElementById("filtroNombre").value = "";
+    document.getElementById("filtroFechaDesde").value = "";
+    document.getElementById("filtroFechaHasta").value = "";
+    document.getElementById("filtroTipoMatrimonio").value = "";
+
+    mostrarTablaPaginadaGlobal();
   };
 }
 
 function cargarTiposMatrimonio() {
+
   const select = document.getElementById("filtroTipoMatrimonio");
   select.innerHTML = `<option value="">Tipo de matrimonio</option>`;
 
-  let hoja = datosPorHoja[HOJA_OCULTA];
+  let valores = new Set();
 
-  if (!hoja || hoja.length === 0) {
-    console.log("⚠️ No hay datos en hoja tipo de matrimonio");
-    return;
+  for (let hoja in datosPorHoja) {
+
+    let data = datosPorHoja[hoja];
+    let headers = headersPorHoja[hoja];
+
+    if (!data || !headers) continue;
+
+    let campo = headers.find(h =>
+      h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")
+    );
+
+    if (!campo) continue;
+
+    data.forEach(row => {
+      let valor = normalizarTipoMatrimonio(row[campo]);
+      if (valor) valores.add(valor);
+    });
   }
 
-  // 🔥 agarrar la primera columna REAL (por header)
-  const headers = headersPorHoja[HOJA_OCULTA];
-  const primeraColumna = headers[0];
-
-  let valoresUnicos = [...new Set(
-    hoja.map(r => (r[primeraColumna] || "").toString().trim())
-  )];
-
-  valoresUnicos.forEach(v => {
-    if (v) {
-      select.innerHTML += `<option value="${v}">${v}</option>`;
-    }
+  [...valores].forEach(v => {
+    select.innerHTML += `<option value="${v}">${v}</option>`;
   });
 
-  console.log("✅ Tipos cargados:", valoresUnicos);
+  console.log("Tipos cargados:", [...valores]);
 }
 
 // =====================
@@ -410,28 +443,121 @@ function anteriorPagina() {
 // =====================
 function mostrarTablaManual() {
   document.getElementById("contenedorTabla").style.display = "block";
+  document.getElementById("paginacion").style.display = "block";
+
+  hojaActual = document.getElementById("selectorHoja").value;
+
   paginaActual = 1;
+
   mostrarTablaPaginada(datosPorHoja[hojaActual]);
+}
+
+function aplicarFiltroAData(data) {
+
+  let nombre = filtroGlobal.nombre;
+  let desde = filtroGlobal.desde;
+  let hasta = filtroGlobal.hasta;
+  let tipoMatrimonio = filtroGlobal.tipoMatrimonio;
+
+  return data.filter(row => {
+
+    // 🔥 FILTRO NOMBRE GLOBAL
+    if (nombre) {
+      let campoNombre = Object.keys(row).find(k =>
+        k.toLowerCase().includes("nombre")
+      );
+
+      if (campoNombre) {
+        if (!row[campoNombre]?.toLowerCase().includes(nombre)) {
+          return false;
+        }
+      }
+    }
+
+    // 🔥 TIPO MATRIMONIO GLOBAL
+    if (tipoMatrimonio) {
+      const campoTipo = Object.keys(row).find(k =>
+        k.toLowerCase().replace(/\s+/g, "").includes("matrimonio")
+      );
+
+      let valor = campoTipo ? normalizarTipoMatrimonio(row[campoTipo]) : "";
+      if (valor !== tipoMatrimonio.toUpperCase()) return false;
+    }
+
+    // 🔥 FECHAS GLOBALES
+    const campoFecha = Object.keys(row).find(k =>
+      k.toLowerCase().includes("fecha")
+    );
+
+    if ((desde || hasta) && campoFecha) {
+
+      let valorFecha = row[campoFecha];
+      if (!valorFecha) return false;
+
+      let f;
+
+      if (typeof valorFecha === "string" && valorFecha.includes("/")) {
+        let partes = valorFecha.split("/");
+        f = new Date(`${partes[2]}-${partes[1]}-${partes[0]}`);
+      } else {
+        f = new Date(valorFecha);
+      }
+
+      if (isNaN(f)) return false;
+
+      if (desde && f < new Date(desde)) return false;
+      if (hasta && f > new Date(hasta)) return false;
+    }
+
+    return true;
+  });
+}
+function mostrarTablaFiltradaGlobal() {
+  paginaActual = 1;
+  mostrarTablaPaginadaGlobal();
 }
 
 // =====================
 // FILTROS
 // =====================
 function aplicarFiltros() {
+  // 🔥 ACTIVAR MODO FILTRO
 
-  modoFiltrado = true; // 🔥 ACTIVAR MODO FILTRO
+  modoFiltrado = true;
 
-  let data = datosPorHoja[hojaActual];
-  if (!data || data.length === 0) return;
+  filtroGlobal.nombre = document.getElementById("filtroNombre").value.toLowerCase();
+  filtroGlobal.desde = document.getElementById("filtroFechaDesde").value;
+  filtroGlobal.hasta = document.getElementById("filtroFechaHasta").value;
+  filtroGlobal.tipoMatrimonio = document.getElementById("filtroTipoMatrimonio").value;
 
-  let nombre = document.getElementById("filtroNombre").value.toLowerCase();
-  let desde = document.getElementById("filtroFechaDesde").value;
-  let hasta = document.getElementById("filtroFechaHasta").value;
+  paginaActual = 1;
+  mostrarTablaPaginadaGlobal();
+
+  document.getElementById("contenedorTabla").style.display = "block";
+  document.getElementById("paginacion").style.display = "none";
+
+  mostrarTablaFiltradaGlobal();
 
   const campoFecha = Object.keys(data[0]).find(k => k.toLowerCase().includes("fecha"));
   const campoNombre = Object.keys(data[0]).find(k => k.toLowerCase().includes("nombre"));
 
   let filtrado = data.filter(row => {
+    if (tipoMatrimonio) {
+      let valor = "";
+
+      // detectar columna matrimonio
+      const campoMatrimonio = Object.keys(row).find(k =>
+        k.toLowerCase().replace(/\s+/g, "").includes("matrimonio")
+      );
+
+      if (campoMatrimonio) {
+        valor = normalizarTipoMatrimonio(row[campoMatrimonio]);
+      }
+
+      if (valor !== tipoMatrimonio.toUpperCase()) {
+        return false;
+      }
+    }
 
     let ok = true;
 
@@ -476,20 +602,36 @@ function aplicarFiltros() {
 // =====================
 function limpiarFiltros() {
 
-  modoFiltrado = false; // 🔥 DESACTIVAR FILTRO
+  modoFiltrado = false;
+
+  filtroGlobal = {
+    nombre: "",
+    desde: "",
+    hasta: "",
+    tipoMatrimonio: ""
+  };
 
   document.getElementById("filtroNombre").value = "";
   document.getElementById("filtroFechaDesde").value = "";
   document.getElementById("filtroFechaHasta").value = "";
+  document.getElementById("filtroTipoMatrimonio").value = "";
 
-  document.getElementById("contenedorTabla").style.display = "block";
-
-  // 🔥 VOLVER A PAGINACIÓN NORMAL
   paginaActual = 1;
-  mostrarTablaPaginada(datosPorHoja[hojaActual]);
+  mostrarTablaPaginadaGlobal();
 
-  // 🔥 MOSTRAR BOTONES
   document.getElementById("paginacion").style.display = "block";
+}
+
+function mostrarTablaPaginadaGlobal() {
+
+  let data = datosPorHoja[hojaActual];
+
+  data = aplicarFiltroAData(data);
+
+  const inicio = (paginaActual - 1) * filasPorPagina;
+  const fin = inicio + filasPorPagina;
+
+  mostrarTabla(data.slice(inicio, fin));
 }
 
 // =====================
@@ -593,7 +735,7 @@ function generarDashboard() {
     return;
   }
 
-  
+
 
   let data = datosPorHoja[hojaActual];
   if (!data || data.length === 0) return;
@@ -613,7 +755,7 @@ function generarDashboard() {
     return;
   }
 
- 
+
 
   let conteo = {};
   let totalMatrimonios = 0;

@@ -325,7 +325,7 @@ function exportarDashboardPDF() {
   const colores = [
     "#0d6efd", "#198754", "#ffc107", "#dc3545",
     "#6f42c1", "#20c997", "#fd7e14", "#0dcaf0"
-  ];
+  ]; 
 
   // =====================
   // 🎯 HEADER BONITO
