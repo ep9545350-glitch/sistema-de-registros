@@ -1,0 +1,501 @@
+ body {
+     margin: 0;
+     overflow-x: hidden;
+     background: #f4f6f9;
+     font-family: 'Segoe UI', sans-serif;
+ }
+
+ /* =========================
+   🔥 SIDEBAR MODERNO PRO
+========================= */
+
+ .sidebar {
+     min-height: 100vh;
+     padding: 25px 15px;
+     color: white;
+
+     /* Fondo elegante tipo dashboard */
+     background: linear-gradient(180deg, #0f172a, #1e1b4b);
+
+     position: relative;
+     box-shadow: 5px 0 30px rgba(0, 0, 0, 0.25);
+ }
+
+ /* TÍTULO */
+ .sidebar h5 {
+     font-weight: 700;
+     font-size: 18px;
+     text-align: center;
+     margin-bottom: 25px;
+     letter-spacing: 1px;
+     color: #ffffff;
+ }
+
+ /* BOTONES COMO NAV ITEMS */
+ .sidebar button {
+     width: 100%;
+     margin-bottom: 12px;
+
+     padding: 12px 14px;
+     border-radius: 12px;
+
+     border: none;
+     color: #e5e7eb;
+     font-weight: 500;
+     text-align: left;
+
+     background: rgba(255, 255, 255, 0.06);
+     backdrop-filter: blur(8px);
+
+     transition: all 0.25s ease;
+
+     display: flex;
+     align-items: center;
+     gap: 10px;
+ }
+
+ /* ICONO SIMULADO (opcional futuro) */
+ .sidebar button::before {
+     content: "•";
+     color: #60a5fa;
+     font-size: 18px;
+     margin-right: 6px;
+ }
+
+ /* HOVER PREMIUM */
+ .sidebar button:hover {
+     background: linear-gradient(90deg, #0d6efd, #6f42c1);
+     color: white;
+     transform: translateX(6px);
+     box-shadow: 0 8px 20px rgba(13, 110, 253, 0.3);
+ }
+
+ /* BOTÓN ACTIVO (lo puedes activar con JS si quieres) */
+ .sidebar button.active {
+     background: linear-gradient(90deg, #22c55e, #16a34a);
+     color: white;
+     box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3);
+ }
+
+ /* EFECTO DE SEPARACIÓN VISUAL */
+ .sidebar button:not(:last-child) {
+     margin-bottom: 10px;
+ }
+
+ /* EFECTO LATERAL DECORATIVO */
+ .sidebar::after {
+     content: "";
+     position: absolute;
+     top: 0;
+     right: 0;
+     width: 2px;
+     height: 100%;
+     background: linear-gradient(180deg, transparent, #3b82f6, transparent);
+     opacity: 0.5;
+ }
+
+ /* CONTENIDO */
+ .contenido {
+     padding: 20px;
+ }
+
+ /* SECCIONES */
+ .seccion {
+     display: none;
+     animation: fadeIn 0.4s ease;
+ }
+
+ .seccion.activa {
+     display: block;
+ }
+
+ @keyframes fadeIn {
+     from {
+         opacity: 0;
+         transform: translateY(10px);
+     }
+
+     to {
+         opacity: 1;
+         transform: translateY(0);
+     }
+ }
+
+ /* CARDS */
+ .card {
+     border: none;
+     border-radius: 15px;
+     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+ }
+
+ .card h5 {
+     font-weight: bold;
+     margin-bottom: 15px;
+ }
+
+ /* TABLA */
+ .tabla-responsive {
+     overflow-x: auto;
+     border-radius: 10px;
+ }
+
+ table {
+     border-radius: 10px;
+     overflow: hidden;
+ }
+
+ th,
+ td {
+     white-space: nowrap;
+     font-size: 13px;
+ }
+
+ thead {
+     background: #0d6efd;
+     color: white;
+ }
+
+ /* BOTONES */
+ .btn {
+     border-radius: 10px;
+     transition: 0.2s;
+ }
+
+ .btn:hover {
+     transform: scale(1.05);
+ }
+
+ /* INPUTS */
+ .form-control,
+ .form-select {
+     border-radius: 10px;
+     border: 1px solid #ddd;
+ }
+
+ .form-control:focus {
+     box-shadow: 0 0 5px rgba(13, 110, 253, 0.5);
+     border-color: #0d6efd;
+ }
+
+ /* =========================
+   🔥 MODAL MODERNO PRO
+========================= */
+
+ .modal-content {
+     border-radius: 18px;
+     border: none;
+     overflow: hidden;
+     background: #ffffff;
+     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+     animation: modalPop 0.25s ease;
+ }
+
+ @keyframes modalPop {
+     from {
+         transform: translateY(20px);
+         opacity: 0;
+     }
+
+     to {
+         transform: translateY(0);
+         opacity: 1;
+     }
+ }
+
+ /* HEADER MÁS ELEGANTE */
+ .modal-header {
+     background: linear-gradient(135deg, #0d6efd, #6f42c1);
+     color: white;
+     padding: 16px 20px;
+     border-bottom: none;
+ }
+
+ .modal-title {
+     font-weight: 600;
+     font-size: 18px;
+     letter-spacing: 0.3px;
+ }
+
+ /* BOTÓN CERRAR */
+ .btn-close-white {
+     filter: brightness(0) invert(1);
+     opacity: 0.9;
+ }
+
+ .btn-close-white:hover {
+     opacity: 1;
+ }
+
+ /* BODY MÁS LIMPIO */
+ .modal-body {
+     padding: 20px;
+     background: #f8f9fc;
+ }
+
+ /* CHECKBOX CARDS */
+ #listaColumnas .form-check {
+     background: white;
+     padding: 10px 12px;
+     border-radius: 10px;
+     margin-bottom: 8px;
+     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+     transition: 0.2s;
+ }
+
+ #listaColumnas .form-check:hover {
+     transform: translateY(-2px);
+     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+ }
+
+ .form-check-input {
+     cursor: pointer;
+ }
+
+ .form-check-label {
+     margin-left: 6px;
+     font-size: 14px;
+ }
+
+ /* FOOTER MÁS PRO */
+ .modal-footer {
+     border-top: none;
+     background: white;
+     padding: 15px;
+     display: flex;
+     justify-content: space-between;
+     gap: 10px;
+ }
+
+ /* BOTONES MODAL */
+ .modal-footer .btn {
+     border-radius: 10px;
+     font-weight: 500;
+     padding: 8px 14px;
+     transition: 0.2s;
+ }
+
+ .modal-footer .btn:hover {
+     transform: translateY(-2px);
+ }
+
+ /* BOTÓN EXPORTAR DESTACADO */
+ .modal-footer .btn-danger {
+     background: linear-gradient(135deg, #dc3545, #ff4d6d);
+     border: none;
+ }
+
+ .modal-footer .btn-warning {
+     background: linear-gradient(135deg, #ffc107, #ffb703);
+     border: none;
+     color: #000;
+ }
+
+ .modal-footer .btn-secondary {
+     background: #e9ecef;
+     border: none;
+     color: #333;
+ }
+
+ /* RESPONSIVE */
+ @media (max-width: 768px) {
+
+     .sidebar {
+         position: fixed;
+         width: 220px;
+         left: -220px;
+         top: 0;
+         z-index: 1000;
+     }
+
+     .sidebar.activa {
+         left: 0;
+     }
+
+     .contenido {
+         margin-left: 0;
+         padding: 15px;
+     }
+
+     .toggle-btn {
+         position: fixed;
+         top: 10px;
+         left: 10px;
+         z-index: 1100;
+         background: #0d6efd;
+         color: white;
+         border: none;
+         border-radius: 8px;
+         padding: 8px 12px;
+     }
+ }
+
+ /* =========================
+   🔥 SECCIÓN TABLA PRO
+========================= */
+
+ #tabla .card-body {
+     background: #ffffff;
+     border-radius: 15px;
+     padding: 20px;
+ }
+
+ /* TÍTULO */
+ #tabla h5 {
+     font-weight: 700;
+     font-size: 20px;
+     margin-bottom: 15px;
+     color: #1e293b;
+ }
+
+ /* =========================
+   🔥 FILTROS PRO
+========================= */
+
+ #tabla .row.g-2 {
+     background: #f8fafc;
+     padding: 15px;
+     border-radius: 12px;
+     box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.03);
+ }
+
+ /* INPUTS MÁS LIMPIOS */
+ #tabla .form-control,
+ #tabla .form-select {
+     border-radius: 10px;
+     border: 1px solid #e5e7eb;
+     font-size: 14px;
+ }
+
+ /* EFECTO FOCUS */
+ #tabla .form-control:focus,
+ #tabla .form-select:focus {
+     border-color: #0d6efd;
+     box-shadow: 0 0 8px rgba(13, 110, 253, 0.3);
+ }
+
+ /* =========================
+   🔥 BOTONES TABLA
+========================= */
+
+ #tabla .d-flex .btn {
+     border-radius: 10px;
+     font-weight: 500;
+     padding: 8px 14px;
+ }
+
+ /* COLORES MÁS MODERNOS */
+ #tabla .btn-warning {
+     background: linear-gradient(135deg, #facc15, #f59e0b);
+     border: none;
+     color: #000;
+ }
+
+ #tabla .btn-secondary {
+     background: #e5e7eb;
+     border: none;
+     color: #374151;
+ }
+
+ #tabla .btn-danger {
+     background: linear-gradient(135deg, #ef4444, #dc2626);
+     border: none;
+ }
+
+ /* =========================
+   🔥 TABLA MODERNA PRO
+========================= */
+
+ #contenedorTabla {
+     background: white;
+     border-radius: 15px;
+     padding: 10px;
+     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+ }
+
+ /* TABLA EMPRESARIAL CUADRICULADA */
+ #contenedorTabla table {
+     border-collapse: collapse;
+     /* 🔥 vuelve el estilo cuadriculado */
+     width: 100%;
+     background: white;
+ }
+
+ /* HEADER */
+ #contenedorTabla thead {
+     background: linear-gradient(135deg, #0d6efd, #6f42c1);
+ }
+
+ #contenedorTabla th {
+     color: white;
+     font-size: 13px;
+     padding: 10px;
+     text-align: left;
+     border: 1px solid #dee2e6;
+     /* 🔥 líneas */
+ }
+
+ /* CELDAS */
+ #contenedorTabla td {
+     padding: 10px;
+     font-size: 13px;
+     border: 1px solid #e5e7eb;
+     /* 🔥 cuadrícula */
+ }
+
+ /* FILAS ALTERNADAS */
+ #contenedorTabla tbody tr:nth-child(even) {
+     background: #f8fafc;
+ }
+
+ /* HOVER SUAVE */
+ #contenedorTabla tbody tr:hover {
+     background: #eaf1ff;
+     transition: 0.2s;
+ }
+
+ /* HEADER FIJO */
+ #contenedorTabla thead th {
+     position: sticky;
+     top: 0;
+     z-index: 2;
+ }
+
+ /* EFECTO HOVER */
+ #contenedorTabla tbody tr:hover {
+     background: #f1f5ff;
+     transition: 0.2s;
+ }
+
+ /* FILAS ALTERNADAS */
+ #contenedorTabla tbody tr:nth-child(even) {
+     background: #fafafa;
+ }
+
+ /* =========================
+   🔥 PAGINACIÓN PRO
+========================= */
+
+ #paginacion {
+     display: flex;
+     justify-content: center;
+     gap: 10px;
+ }
+
+ #paginacion .btn {
+     border-radius: 8px;
+     padding: 6px 12px;
+     background: #e5e7eb;
+     border: none;
+ }
+
+ #paginacion .btn:hover {
+     background: #0d6efd;
+     color: white;
+ }
+
+ /* HEADER FIJO */
+ #contenedorTabla thead th {
+     position: sticky;
+     top: 0;
+     z-index: 2;
+ }
