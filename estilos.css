@@ -138,18 +138,18 @@
      overflow-x: auto;
      border-radius: 10px;
  }
-
+ 
  table {
      border-radius: 10px;
      overflow: hidden;
  }
-
+ 
  th,
  td {
      white-space: nowrap;
      font-size: 13px;
  }
-
+ 
  thead {
      background: #0d6efd;
      color: white;
@@ -499,3 +499,17 @@
      top: 0;
      z-index: 2;
  }
+
+ .scroll-superior {
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 15px;
+}
+
+.scroll-bar {
+  height: 1px;
+}
+
+.tabla-scroll {
+  overflow-x: auto;
+}

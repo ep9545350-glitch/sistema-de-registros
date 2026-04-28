@@ -14,7 +14,7 @@
 
   <div class="container-fluid">
     <div class="row">
-      
+
 
       <!-- MENÚ -->
       <div class="col-md-2 sidebar">
@@ -93,7 +93,9 @@
             <h5>Registros </h5>
 
             <!-- SELECTOR -->
-            <select id="selectorHoja" class="form-select mb-2"></select>
+            <select id="selectorHoja" class="form-select mb-2">
+              <option value="">Filtrar por sección</option>
+            </select>
 
             <button class="btn btn-info mb-3" onclick="mostrarTablaManual()">Mostrar Tabla</button>
 
@@ -104,6 +106,7 @@
                   <option value="">Tipo de matrimonio</option>
                 </select>
               </div>
+
 
               <div class="col-md-4">
                 <input type="text" id="filtroNombre" class="form-control" placeholder="Buscar nombre">
@@ -128,11 +131,21 @@
             </div>
 
             <!-- TABLA -->
-            <div id="contenedorTabla" class="tabla-responsive" style="display:none;">
-              <table class="table table-bordered">
-                <thead id="thead" class="table-dark"></thead>
-                <tbody id="tbody"></tbody>
-              </table>
+            <div id="contenedorTabla" style="display:none;">
+
+              <!-- 🔥 SCROLL SUPERIOR -->
+              <div class="scroll-superior">
+                <div class="scroll-bar"></div>
+              </div>
+
+              <!-- 🔥 TABLA -->
+              <div class="tabla-scroll">
+                <table class="table table-bordered">
+                  <thead id="thead" class="table-dark"></thead>
+                  <tbody id="tbody"></tbody>
+                </table>
+              </div>
+
             </div>
 
             <!-- PAGINACIÓN -->
@@ -180,6 +193,7 @@
   <script src="app.js"></script>
   <script src="pfd.js"></script>
   <script src="excel.js"></script>
+  <script src="scroll.js"></script> 
 
   <script>
     function toggleMenu() {

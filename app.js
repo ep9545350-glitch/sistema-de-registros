@@ -9,6 +9,7 @@ let filtroGlobal = {
   hasta: "",
   tipoMatrimonio: ""
 };
+let dataFiltrada = [];
 let modoFiltrado = false;
 let datosPorHoja = {};
 let headersPorHoja = {};
@@ -26,87 +27,36 @@ const filasPorPagina = 50;
 // HOJA OCULTA
 const HOJA_OCULTA = "tipo de matrimonio";
 
+
+window.onload = async function () {
+  await cargarDesdeSheets();
+
+  cargarSelector();
+  generarFormulario();
+  activarFiltrosEnTiempoReal();
+  cargarTiposMatrimonio();
+
+  hojaActual = Object.keys(datosPorHoja)[0];
+  mostrarTodasLasTablas();
+};
 // =====================
 // DETECTAR CAMPO ORDEN
 // =====================
 function esCampoOrden(nombre) {
   if (!nombre) return false;
 
-  nombre = nombre.toLowerCase().replace(/\s+/g, "");
+  nombre = nombre.toLowerCase().trim();
 
+  // 🔥 SOLO CAMPOS EXACTOS
   return (
     nombre === "n°" ||
     nombre === "nº" ||
     nombre === "no" ||
-    nombre.includes("orden") ||
-    nombre.includes("n°") ||
-    nombre.includes("nº") ||
-    nombre.includes("numero")
+    nombre === "numero" ||
+    nombre === "orden"
   );
 }
 
-function inicializarVista() {
-  hojaActual = Object.keys(datosPorHoja)[0];
-
-  paginaActual = 1;
-  modoFiltrado = false;
-
-  document.getElementById("contenedorTabla").style.display = "none";
-  document.getElementById("paginacion").style.display = "none";
-
-  cargarSelector();
-  generarFormulario();
-
-  cargarTiposMatrimonio();
-}
-
-// =====================
-// CARGAR DATOS GUARDADOS
-// =====================
-window.onload = function () {
-  const datosGuardados = localStorage.getItem("datosExcel");
-  const headersGuardados = localStorage.getItem("headersExcel");
-  const ordenGuardado = localStorage.getItem("contadorOrden");
-
-  if (ordenGuardado) {
-    contadorOrden = parseInt(ordenGuardado);
-  }
-
-  if (datosGuardados && headersGuardados) {
-    datosPorHoja = JSON.parse(datosGuardados);
-    headersPorHoja = JSON.parse(headersGuardados);
-
-    headersGlobales = Object.values(headersPorHoja).flat();
-
-    detectarCamposCompartidos();
-
-    inicializarVista();
-  }
-
-  document.getElementById("contenedorTabla").style.display = "none";
-  document.getElementById("paginacion").style.display = "none";
-};
-
-// =====================
-// DETECTAR CAMPOS COMPARTIDOS
-// =====================
-function detectarCamposCompartidos() {
-  camposCompartidos = {};
-
-  headersGlobales.forEach(h => {
-    let count = 0;
-
-    for (let hoja in headersPorHoja) {
-      if (headersPorHoja[hoja].includes(h)) {
-        count++;
-      }
-    }
-
-    if (count > 1) {
-      camposCompartidos[h] = true;
-    }
-  });
-}
 
 function normalizarTipoMatrimonio(valor) {
   if (!valor) return "";
@@ -119,10 +69,175 @@ function normalizarTipoMatrimonio(valor) {
   return valor.toString().toUpperCase();
 }
 
+
+
 // =====================
-// LEER EXCEL
-// =====================
-document.getElementById("fileInput").addEventListener("change", handleFile);
+async function cargarDesdeSheets() {
+
+  const hojas = {
+    "REPORTE DIARIO": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT4ItOkP5Z2GkjwRQBttEnw8ad9b4rhLEK9BSHl8GQfCwU2h2biYHwhxPSltF6IceFcNrD1YIdCueuZ/pub?gid=498321705&single=true&output=csv",
+
+    "REGISTRO DE ATENCION": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT4ItOkP5Z2GkjwRQBttEnw8ad9b4rhLEK9BSHl8GQfCwU2h2biYHwhxPSltF6IceFcNrD1YIdCueuZ/pub?gid=2003543030&single=true&output=csv",
+
+    "RESULTADOS DE LABORATORIO": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT4ItOkP5Z2GkjwRQBttEnw8ad9b4rhLEK9BSHl8GQfCwU2h2biYHwhxPSltF6IceFcNrD1YIdCueuZ/pub?gid=861222356&single=true&output=csv"
+  };
+
+  datosPorHoja = {};
+  headersPorHoja = {};
+
+  for (let nombre in hojas) {
+
+    const res = await fetch(hojas[nombre]);
+    const texto = await res.text();
+
+    const filas = texto.split("\n").map(f =>
+      f.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
+    );
+
+    const headers = filas[0].map(h => h.replace(/"/g, "").trim());
+
+    const data = filas.slice(1).map(fila => {
+      let obj = {};
+
+      headers.forEach((h, i) => {
+        let valor = fila[i] || "";
+        valor = valor.replace(/"/g, "").trim();
+
+        if (h.toLowerCase().includes("fecha")) {
+          valor = soloFecha(valor);
+        }
+
+        obj[h] = valor;
+      });
+
+      return obj;
+    })
+
+      // 🔥 ELIMINAR FILAS VACÍAS (solo tienen N° o todo vacío)
+      .filter(row => {
+        let valores = Object.values(row);
+
+        // contar campos con datos reales
+        let llenos = valores.filter(v => v && v.toString().trim() !== "");
+
+        // 🔥 mínimo 2 campos (ej: N° + nombre)
+        return llenos.length > 1;
+      });
+
+    // 🔥 AGREGAR N° SI NO EXISTE EN LOS DATOS
+    data.forEach((row, index) => {
+      let campoOrden = headers.find(h => esCampoOrden(h));
+
+      if (campoOrden && (!row[campoOrden] || row[campoOrden] === "")) {
+        row[campoOrden] = index + 1;
+      }
+    });
+
+    datosPorHoja[nombre] = data;
+    headersPorHoja[nombre] = headers;
+  }
+  setTimeout(() => {
+    cargarTiposMatrimonio();
+  }, 500);
+
+  hojaActual = Object.keys(datosPorHoja)[0];
+
+  mostrarTodasLasTablas();
+  cargarSelector();
+  generarFormulario();
+  cargarTiposMatrimonio();
+
+  console.log("🔥 TODAS LAS HOJAS CARGADAS:", datosPorHoja);
+  // 🔥 ASEGURAR QUE EXISTA N° EN TODAS LAS HOJAS
+  if (!headers.some(h => esCampoOrden(h))) {
+    headers.push("N°"); // 👈 AL FINAL (como tú quieres)
+  }
+
+
+}
+
+function mostrarTodasLasTablas() {
+
+  const contenedor = document.getElementById("contenedorTabla");
+  contenedor.innerHTML = "";
+
+  for (let hoja in datosPorHoja) {
+
+    let data = datosPorHoja[hoja];
+
+    // 🔥 APLICAR FILTROS
+    let dataFiltradaLocal = modoFiltrado
+      ? aplicarFiltroAData(data)
+      : data;
+
+    // 🔥 SI NO HAY RESULTADOS → NO MOSTRAR SECCIÓN
+    if (!dataFiltradaLocal || dataFiltradaLocal.length === 0) continue;
+
+    let headers = headersPorHoja[hoja];
+
+    // ============================
+    // 🔥 DETECTAR COLUMNAS CON DATOS
+    // ============================
+    let headersVisibles = headers.filter(h => {
+      return dataFiltradaLocal.some(row => {
+        let valor = row[h];
+        return valor !== null && valor !== undefined && valor.toString().trim() !== "";
+      });
+    });
+
+    let html = `
+      <div class="mb-5">
+    <h3 class="bg-dark text-white p-2 rounded">
+      ${hoja}
+    </h3>
+
+    <div class="scroll-superior">
+      <div class="scroll-bar"></div>
+    </div>
+
+    <div class="tabla-scroll">
+      <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+              <tr>
+                ${headersVisibles.map(h => `<th>${h}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
+    dataFiltradaLocal.forEach(row => {
+      html += "<tr>";
+
+      headersVisibles.forEach(h => {
+        let valor = row[h] ?? "";
+
+        // 🔥 NORMALIZAR MATRIMONIO
+        if (h.toLowerCase().includes("matrimonio")) {
+          valor = normalizarTipoMatrimonio(valor);
+        }
+
+        html += `<td>${(valor || "").toString().toUpperCase()}</td>`;
+      });
+
+      html += "</tr>";
+    });
+
+    html += `
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    contenedor.innerHTML += html;
+  }
+
+  document.getElementById("contenedorTabla").style.display = "block";
+
+  setTimeout(() => {
+    activarScrollSuperior();
+  }, 100);
+}
 
 function handleFile(e) {
   const file = e.target.files[0];
@@ -255,10 +370,18 @@ function generarFormulario() {
 
     headersPorHoja[hoja].forEach(h => {
 
-      let nombre = h.toLowerCase();
+      let nombre = h.toLowerCase().trim();
 
-      // 🔥 OCULTAR N°
+      // 🔥 OCULTAR N° SIEMPRE
       if (esCampoOrden(nombre)) return;
+
+      // 🔥 🔥 OCULTAR NOMBRE EN OTRAS SECCIONES
+      if (
+        (nombre.includes("nombre") || nombre.includes("apellidos")) &&
+        hoja !== "REPORTE DIARIO"
+      ) {
+        return;
+      }
 
       let tipo = "text";
 
@@ -275,13 +398,17 @@ function generarFormulario() {
 
       if (camposCompartidos[h]) {
 
+        // 🔥 SOLO CREAR UNA VEZ
         if (!inputsCreados[h]) {
+
+          let requerido = ""; // 🔥 TODO opcional
           contenedor.innerHTML += `
-            <div class="col-md-4">
-              <label>${h} (global)</label>
-              <input type="${tipo}" id="global_${h}" class="form-control">
-            </div>
-          `;
+      <div class="col-md-4">
+        <label>${h} (global)</label>
+        <input type="${tipo}" id="global_${h}" class="form-control" ${requerido}>
+      </div>
+    `;
+
           inputsCreados[h] = true;
         }
 
@@ -296,6 +423,12 @@ function generarFormulario() {
 
     });
   }
+
+  document.querySelectorAll("#formularioDinamico input").forEach(input => {
+    input.addEventListener("input", function () {
+      this.value = this.value.toUpperCase();
+    });
+  });
 }
 
 // =====================
@@ -305,13 +438,19 @@ function cargarSelector() {
   const selector = document.getElementById("selectorHoja");
   selector.innerHTML = "";
 
-  Object.keys(datosPorHoja).forEach(h => {
+  // 🔥 OPCIÓN GENERAL
+  selector.innerHTML += `<option value="">Todas las secciones</option>`;
+
+  const hojas = Object.keys(datosPorHoja);
+  hojas.forEach(h => {
     if (h === HOJA_OCULTA) return;
     selector.innerHTML += `<option value="${h}">${h}</option>`;
   });
 
   selector.onchange = () => {
+
     hojaActual = selector.value;
+
     paginaActual = 1;
     modoFiltrado = false;
 
@@ -327,13 +466,23 @@ function cargarSelector() {
     document.getElementById("filtroFechaHasta").value = "";
     document.getElementById("filtroTipoMatrimonio").value = "";
 
-    mostrarTablaPaginadaGlobal();
+    // 🔥 SI NO HAY SECCIÓN SELECCIONADA → MOSTRAR TODO
+    if (!hojaActual) {
+      mostrarTodasLasTablas();
+      return;
+    }
+
+    // 🔥 SI HAY SECCIÓN → SOLO ESA
+    mostrarSoloHoja(hojaActual);
   };
 }
 
 function cargarTiposMatrimonio() {
 
   const select = document.getElementById("filtroTipoMatrimonio");
+
+  if (!select) return;
+
   select.innerHTML = `<option value="">Tipo de matrimonio</option>`;
 
   let valores = new Set();
@@ -357,11 +506,14 @@ function cargarTiposMatrimonio() {
     });
   }
 
-  [...valores].forEach(v => {
+  if (valores.size === 0) {
+    select.innerHTML += `<option disabled>No hay datos</option>`;
+    return;
+  }
+
+  [...valores].sort().forEach(v => {
     select.innerHTML += `<option value="${v}">${v}</option>`;
   });
-
-  console.log("Tipos cargados:", [...valores]);
 }
 
 // =====================
@@ -403,7 +555,7 @@ function mostrarTabla(data) {
           valor = normalizarTipoMatrimonio(valor);
         }
 
-        filas += `<td>${valor}</td>`;
+        filas += `<td>${(valor || "").toString().toUpperCase()}</td>`;
       }
 
     });
@@ -412,6 +564,11 @@ function mostrarTabla(data) {
   });
 
   tbody.innerHTML = filas;
+
+
+  setTimeout(() => {
+    activarScrollSuperior();
+  }, 100);
 }
 
 // =====================
@@ -450,6 +607,10 @@ function mostrarTablaManual() {
   paginaActual = 1;
 
   mostrarTablaPaginada(datosPorHoja[hojaActual]);
+
+  setTimeout(() => {
+    activarScrollSuperior();
+  }, 100);
 }
 
 function aplicarFiltroAData(data) {
@@ -461,20 +622,16 @@ function aplicarFiltroAData(data) {
 
   return data.filter(row => {
 
-    // 🔥 FILTRO NOMBRE GLOBAL
+    // 🔥 FILTRO NOMBRE
     if (nombre) {
-      let campoNombre = Object.keys(row).find(k =>
-        k.toLowerCase().includes("nombre")
+      let encontrado = Object.values(row).some(valor =>
+        valor &&
+        valor.toString().toLowerCase().includes(nombre)
       );
-
-      if (campoNombre) {
-        if (!row[campoNombre]?.toLowerCase().includes(nombre)) {
-          return false;
-        }
-      }
+      if (!encontrado) return false;
     }
 
-    // 🔥 TIPO MATRIMONIO GLOBAL
+    // 🔥 FILTRO TIPO MATRIMONIO
     if (tipoMatrimonio) {
       const campoTipo = Object.keys(row).find(k =>
         k.toLowerCase().replace(/\s+/g, "").includes("matrimonio")
@@ -484,7 +641,7 @@ function aplicarFiltroAData(data) {
       if (valor !== tipoMatrimonio.toUpperCase()) return false;
     }
 
-    // 🔥 FECHAS GLOBALES
+    // 🔥 FILTRO FECHA
     const campoFecha = Object.keys(row).find(k =>
       k.toLowerCase().includes("fecha")
     );
@@ -512,16 +669,10 @@ function aplicarFiltroAData(data) {
     return true;
   });
 }
-function mostrarTablaFiltradaGlobal() {
-  paginaActual = 1;
-  mostrarTablaPaginadaGlobal();
-}
-
 // =====================
 // FILTROS
 // =====================
 function aplicarFiltros() {
-  // 🔥 ACTIVAR MODO FILTRO
 
   modoFiltrado = true;
 
@@ -530,70 +681,12 @@ function aplicarFiltros() {
   filtroGlobal.hasta = document.getElementById("filtroFechaHasta").value;
   filtroGlobal.tipoMatrimonio = document.getElementById("filtroTipoMatrimonio").value;
 
-  paginaActual = 1;
-  mostrarTablaPaginadaGlobal();
-
-  document.getElementById("contenedorTabla").style.display = "block";
-  document.getElementById("paginacion").style.display = "none";
-
-  mostrarTablaFiltradaGlobal();
-
-  const campoFecha = Object.keys(data[0]).find(k => k.toLowerCase().includes("fecha"));
-  const campoNombre = Object.keys(data[0]).find(k => k.toLowerCase().includes("nombre"));
-
-  let filtrado = data.filter(row => {
-    if (tipoMatrimonio) {
-      let valor = "";
-
-      // detectar columna matrimonio
-      const campoMatrimonio = Object.keys(row).find(k =>
-        k.toLowerCase().replace(/\s+/g, "").includes("matrimonio")
-      );
-
-      if (campoMatrimonio) {
-        valor = normalizarTipoMatrimonio(row[campoMatrimonio]);
-      }
-
-      if (valor !== tipoMatrimonio.toUpperCase()) {
-        return false;
-      }
-    }
-
-    let ok = true;
-
-    if (nombre && campoNombre) {
-      ok = row[campoNombre]?.toLowerCase().includes(nombre);
-    }
-
-    if (ok && campoFecha && (desde || hasta)) {
-
-      let valorFecha = row[campoFecha];
-      if (!valorFecha) return false;
-
-      let f;
-
-      if (typeof valorFecha === "string" && valorFecha.includes("/")) {
-        let partes = valorFecha.split("/");
-        f = new Date(`${partes[2]}-${partes[1]}-${partes[0]}`);
-      } else {
-        f = new Date(valorFecha);
-      }
-
-      if (isNaN(f)) return false;
-
-      if (desde && f < new Date(desde)) ok = false;
-      if (hasta && f > new Date(hasta)) ok = false;
-    }
-
-    return ok;
-  });
-
   document.getElementById("contenedorTabla").style.display = "block";
 
-  // 🔥 MOSTRAR TODO (SIN PAGINACIÓN)
-  mostrarTabla(filtrado);
+  // 🔥 MOSTRAR TODAS LAS SECCIONES FILTRADAS
+  mostrarTodasLasTablas();
 
-  // 🔥 OCULTAR BOTONES
+  // 🔥 OCULTAR PAGINACIÓN
   document.getElementById("paginacion").style.display = "none";
 }
 
@@ -616,8 +709,8 @@ function limpiarFiltros() {
   document.getElementById("filtroFechaHasta").value = "";
   document.getElementById("filtroTipoMatrimonio").value = "";
 
-  paginaActual = 1;
-  mostrarTablaPaginadaGlobal();
+  // 🔥 VOLVER A MOSTRAR TODO
+  mostrarTodasLasTablas();
 
   document.getElementById("paginacion").style.display = "block";
 }
@@ -639,52 +732,66 @@ function mostrarTablaPaginadaGlobal() {
 // =====================
 function agregarDato() {
 
-  for (let hoja in headersPorHoja) {
+  let nombreGlobal = "";
+  let apellidoGlobal = "";
 
-    if (hoja === HOJA_OCULTA) continue;
+  document.querySelectorAll("#formularioDinamico input").forEach(input => {
+    let id = input.id.toLowerCase();
+
+    if (id.includes("nombre")) {
+      nombreGlobal = input.value;
+    }
+
+    if (id.includes("apellido")) {
+      apellidoGlobal = input.value;
+    }
+  });
+
+  for (let hoja in headersPorHoja) {
 
     let nuevo = {};
 
     headersPorHoja[hoja].forEach(h => {
 
-      let nombre = h.toLowerCase();
-
-      // 🔥 ORDEN AUTOMÁTICO
-      if (esCampoOrden(nombre)) {
-        nuevo[h] = contadorOrden;
+      // ✅ GENERAR ORDEN AUTOMÁTICO
+      if (esCampoOrden(h)) {
+        let ultimo = datosPorHoja[hoja].length;
+        nuevo[h] = ultimo + 1; // consecutivo real
         return;
       }
 
-      let input = camposCompartidos[h]
-        ? document.getElementById(`global_${h}`)
-        : document.getElementById(`${hoja}_${h}`);
+      let nombreCampo = h.toLowerCase();
+      let valor = "";
 
-      let valor = input?.value || "";
+      if (nombreCampo.includes("nombre")) {
+        valor = nombreGlobal;
+      }
+      else if (nombreCampo.includes("apellido")) {
+        valor = apellidoGlobal;
+      }
+      else {
+        let input = camposCompartidos[h]
+          ? document.getElementById(`global_${h}`)
+          : document.getElementById(`${hoja}_${h}`);
 
-      if (h.toLowerCase().includes("matrimonio")) {
+        valor = (input?.value || "").toUpperCase();
+      }
+
+      if (nombreCampo.includes("matrimonio")) {
         valor = normalizarTipoMatrimonio(valor);
       }
 
       nuevo[h] = valor;
-
-      if (!camposCompartidos[h] && input) {
-        input.value = "";
-      }
     });
 
+    // 🔥 INSERTAR AL INICIO
+    // ✅ AHORA (tipo cola)
     datosPorHoja[hoja].push(nuevo);
   }
 
-  for (let h in camposCompartidos) {
-    let input = document.getElementById(`global_${h}`);
-    if (input) input.value = "";
-  }
+  document.querySelectorAll("#formularioDinamico input").forEach(i => i.value = "");
 
-  contadorOrden++;
-  localStorage.setItem("contadorOrden", contadorOrden);
-  localStorage.setItem("datosExcel", JSON.stringify(datosPorHoja));
-
-  mostrarTablaPaginada(datosPorHoja[hojaActual]);
+  mostrarTodasLasTablas();
 }
 // =====================
 // ABRIR MODAL
@@ -747,7 +854,8 @@ function generarDashboard() {
   );
 
   let campoFecha = headers.find(h =>
-    h.toLowerCase().includes("fecha")
+    h.toLowerCase().includes("fecha") ||
+    h.toLowerCase().includes("f.")
   );
 
   if (!campoTipo) {
@@ -911,4 +1019,102 @@ function filtrarPorTipo(tipo) {
 
   paginaActual = 1;
   mostrarTablaPaginada(filtrado);
+}
+
+
+
+function mostrarSoloHoja(hoja) {
+
+  const contenedor = document.getElementById("contenedorTabla");
+  contenedor.innerHTML = "";
+
+  let data = modoFiltrado
+    ? aplicarFiltroAData(datosPorHoja[hoja])
+    : datosPorHoja[hoja];
+
+  if (!data) return;
+
+  let headers = headersPorHoja[hoja];
+
+  // 🔥 FILTRAR COLUMNAS VACÍAS (igual que en todas)
+  let headersVisibles = headers.filter(h => {
+    return data.some(row => {
+      let valor = row[h];
+      return valor !== null && valor !== undefined && valor.toString().trim() !== "";
+    });
+  });
+
+  let html = `
+    <div class="mb-5">
+      <h3 class="bg-dark text-white p-2 rounded">${hoja}</h3>
+
+      <!-- 🔥 SCROLL SUPERIOR (AQUÍ ESTABA EL ERROR) -->
+      <div class="scroll-superior">
+        <div class="scroll-bar"></div>
+      </div>
+
+      <div class="tabla-scroll">
+        <table class="table table-bordered table-striped">
+          <thead class="table-dark">
+            <tr>
+              ${headersVisibles.map(h => `<th>${h}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+  `;
+
+  data.forEach(row => {
+    html += "<tr>";
+
+    headersVisibles.forEach(h => {
+      let valor = row[h] ?? "";
+
+      if (h.toLowerCase().includes("matrimonio")) {
+        valor = normalizarTipoMatrimonio(valor);
+      }
+
+      html += `<td>${(valor || "").toString().toUpperCase()}</td>`;
+    });
+
+    html += "</tr>";
+  });
+
+  html += `
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  contenedor.innerHTML = html;
+  contenedor.style.display = "block";
+
+  setTimeout(() => {
+    activarScrollSuperior();
+  }, 100);
+}
+function detectarCamposCompartidos() {
+  camposCompartidos = {};
+
+  let contador = {};
+
+  for (let hoja in headersPorHoja) {
+    headersPorHoja[hoja].forEach(h => {
+      contador[h] = (contador[h] || 0) + 1;
+    });
+  }
+
+  for (let campo in contador) {
+    if (contador[campo] > 1) {
+      camposCompartidos[campo] = true;
+    }
+  }
+
+  // 🔥 FORZAR NOMBRE COMO GLOBAL
+  Object.keys(contador).forEach(campo => {
+    let n = campo.toLowerCase();
+    if (n.includes("nombre") || n.includes("apellidos")) {
+      camposCompartidos[campo] = true;
+    }
+  });
 }
