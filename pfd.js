@@ -268,45 +268,51 @@ function exportarDashboardPDF() {
   // =====================
   // 📊 DATOS
   // =====================
-  let data = datosPorHoja[hojaActual];
-  const headers = headersPorHoja[hojaActual];
+  let data = [];
 
-  let campoTipo = headers.find(h =>
-    h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")
-  );
-
-  let campoFecha = headers.find(h =>
-    h.toLowerCase().includes("fecha")
-  );
-
-
+  // 🔥 UNIFICAR TODAS LAS HOJAS
+  for (let hoja in datosPorHoja) {
+    data = data.concat(datosPorHoja[hoja]);
+  }
 
   let conteo = {};
   let totalMatrimonios = 0;
 
   data.forEach(row => {
 
-    if (filtroMes && campoFecha) {
-      let fecha = row[campoFecha];
+    let campoTipo = Object.keys(row).find(k =>
+      k.toLowerCase().replace(/\s+/g, "").includes("matrimonio")
+    );
 
-      if (!fecha) return;
+    let campoFecha = Object.keys(row).find(k =>
+      k.toLowerCase().includes("fecha") ||
+      k.toLowerCase().includes("f.")
+    );
 
-      if (typeof fecha === "string" && fecha.includes("/")) {
-        let partes = fecha.split("/");
-        let formato = `${partes[2]}-${partes[1]}`;
-        if (formato !== filtroMes) return;
-      } else {
-        let f = new Date(fecha);
-        if (isNaN(f)) return;
+    if (!campoTipo) return;
+    if (!campoFecha) return;
 
-        let formato = `${f.getFullYear()}-${(f.getMonth() + 1)
-          .toString()
-          .padStart(2, "0")}`;
+    let fecha = row[campoFecha];
+    if (!fecha) return;
 
-        if (formato !== filtroMes) return;
-      }
+    let f;
+
+    if (typeof fecha === "string" && fecha.includes("/")) {
+      let partes = fecha.split("/");
+      f = new Date(`${partes[2]}-${partes[1]}-${partes[0]}`);
+    } else {
+      f = new Date(fecha);
     }
 
+    if (isNaN(f)) return;
+
+    let formato = `${f.getFullYear()}-${(f.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}`;
+
+    if (formato !== filtroMes) return;
+
+    // ✅ CONTAR
     totalMatrimonios++;
 
     let tipo = normalizarTipoMatrimonio(row[campoTipo]);
@@ -325,7 +331,7 @@ function exportarDashboardPDF() {
   const colores = [
     "#0d6efd", "#198754", "#ffc107", "#dc3545",
     "#6f42c1", "#20c997", "#fd7e14", "#0dcaf0"
-  ]; 
+  ];
 
   // =====================
   // 🎯 HEADER BONITO

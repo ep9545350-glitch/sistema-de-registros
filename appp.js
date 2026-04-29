@@ -1,4 +1,4 @@
-const COLORES_GRAFICOS = [
+ const COLORES_GRAFICOS = [
   "#0d6efd", "#198754", "#ffc107", "#dc3545",
   "#6f42c1", "#20c997", "#fd7e14", "#0dcaf0"
 ];
@@ -29,6 +29,7 @@ const HOJA_OCULTA = "tipo de matrimonio";
 
 
 window.onload = async function () {
+
   await cargarDesdeSheets();
 
   cargarSelector();
@@ -103,7 +104,10 @@ async function cargarDesdeSheets() {
         let valor = fila[i] || "";
         valor = valor.replace(/"/g, "").trim();
 
-        if (h.toLowerCase().includes("fecha")) {
+        if (
+          h.toLowerCase().includes("fecha") ||
+          h.toLowerCase().includes("f.")
+        ) {
           valor = soloFecha(valor);
         }
 
@@ -149,9 +153,7 @@ async function cargarDesdeSheets() {
 
   console.log("🔥 TODAS LAS HOJAS CARGADAS:", datosPorHoja);
   // 🔥 ASEGURAR QUE EXISTA N° EN TODAS LAS HOJAS
-  if (!headers.some(h => esCampoOrden(h))) {
-    headers.push("N°"); // 👈 AL FINAL (como tú quieres)
-  }
+  
 
 
 }
@@ -169,6 +171,8 @@ function mostrarTodasLasTablas() {
     let dataFiltradaLocal = modoFiltrado
       ? aplicarFiltroAData(data)
       : data;
+    console.log("👉 DATA FINAL:", datosPorHoja);
+    console.log("👉 HEADERS:", headersPorHoja);
 
     // 🔥 SI NO HAY RESULTADOS → NO MOSTRAR SECCIÓN
     if (!dataFiltradaLocal || dataFiltradaLocal.length === 0) continue;
@@ -210,6 +214,14 @@ function mostrarTodasLasTablas() {
 
       headersVisibles.forEach(h => {
         let valor = row[h] ?? "";
+
+        // 🔥 FORZAR FORMATO DE FECHA AL MOSTRAR
+        if (
+          h.toLowerCase().includes("fecha") ||
+          h.toLowerCase().includes("f.")
+        ) {
+          valor = soloFecha(valor);
+        }
 
         // 🔥 NORMALIZAR MATRIMONIO
         if (h.toLowerCase().includes("matrimonio")) {
@@ -335,8 +347,28 @@ function handleFile(e) {
 function soloFecha(valor) {
   if (!valor) return "";
 
+  // 🔥 SI ES STRING CON "/"
+  if (typeof valor === "string" && valor.includes("/")) {
+    let partes = valor.split("/");
+
+    if (partes.length === 3) {
+      let p1 = parseInt(partes[0]); // posible mes
+      let p2 = parseInt(partes[1]); // posible día
+      let anio = partes[2];
+
+      // 🔥 SI EL PRIMER NÚMERO ES <= 12 → probablemente es MM/DD/YYYY
+      if (p1 <= 12 && p2 <= 31) {
+        return `${p2.toString().padStart(2, "0")}/${p1.toString().padStart(2, "0")}/${anio}`;
+      }
+
+      // 🔥 SI NO → YA ESTÁ EN DD/MM/YYYY
+      return `${p1.toString().padStart(2, "0")}/${p2.toString().padStart(2, "0")}/${anio}`;
+    }
+  }
+
   let fecha;
 
+  // 🔥 FECHA NUMÉRICA (EXCEL)
   if (typeof valor === "number") {
     fecha = new Date((valor - 25569) * 86400 * 1000);
   } else {
@@ -730,7 +762,7 @@ function mostrarTablaPaginadaGlobal() {
 // =====================
 // AGREGAR DATO
 // =====================
-function agregarDato() {
+async function agregarDato() {
 
   let nombreGlobal = "";
   let apellidoGlobal = "";
@@ -753,10 +785,9 @@ function agregarDato() {
 
     headersPorHoja[hoja].forEach(h => {
 
-      // ✅ GENERAR ORDEN AUTOMÁTICO
       if (esCampoOrden(h)) {
         let ultimo = datosPorHoja[hoja].length;
-        nuevo[h] = ultimo + 1; // consecutivo real
+        nuevo[h] = ultimo + 1;
         return;
       }
 
@@ -765,11 +796,9 @@ function agregarDato() {
 
       if (nombreCampo.includes("nombre")) {
         valor = nombreGlobal;
-      }
-      else if (nombreCampo.includes("apellido")) {
+      } else if (nombreCampo.includes("apellido")) {
         valor = apellidoGlobal;
-      }
-      else {
+      } else {
         let input = camposCompartidos[h]
           ? document.getElementById(`global_${h}`)
           : document.getElementById(`${hoja}_${h}`);
@@ -784,9 +813,11 @@ function agregarDato() {
       nuevo[h] = valor;
     });
 
-    // 🔥 INSERTAR AL INICIO
-    // ✅ AHORA (tipo cola)
+    // 👉 Guardar en memoria
     datosPorHoja[hoja].push(nuevo);
+
+    // 👉 Guardar en Firebase por hoja
+    
   }
 
   document.querySelectorAll("#formularioDinamico input").forEach(i => i.value = "");
@@ -832,7 +863,6 @@ function generarDashboard() {
 
   let filtroMes = document.getElementById("filtroMesDashboard").value;
 
-  // 🔥 VALIDACIÓN OBLIGATORIA
   if (!filtroMes) {
     contenedor.innerHTML = `
       <div class="alert alert-danger text-center">
@@ -842,73 +872,52 @@ function generarDashboard() {
     return;
   }
 
+  let data = [];
 
-
-  let data = datosPorHoja[hojaActual];
-  if (!data || data.length === 0) return;
-
-  const headers = headersPorHoja[hojaActual];
-
-  let campoTipo = headers.find(h =>
-    h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")
-  );
-
-  let campoFecha = headers.find(h =>
-    h.toLowerCase().includes("fecha") ||
-    h.toLowerCase().includes("f.")
-  );
-
-  if (!campoTipo) {
-    contenedor.innerHTML = "<p>Seleccione una fecha por favor</p>";
-    return;
+  // 🔥 SIEMPRE USAR TODAS LAS HOJAS
+  for (let hoja in datosPorHoja) {
+    data = data.concat(datosPorHoja[hoja]);
   }
 
-
+  if (!data || data.length === 0) return;
 
   let conteo = {};
   let totalMatrimonios = 0;
 
   data.forEach(row => {
 
-    let pasaFiltroMes = true;
+    let campoTipo = Object.keys(row).find(k =>
+      k.toLowerCase().replace(/\s+/g, "").includes("matrimonio")
+    );
 
-    // ======================
-    // 🔥 FILTRO POR MES
-    // ======================
-    if (filtroMes && campoFecha) {
-      let fecha = row[campoFecha];
+    let campoFecha = Object.keys(row).find(k =>
+      k.toLowerCase().includes("fecha") ||
+      k.toLowerCase().includes("f.")
+    );
 
-      if (!fecha) return;
+    if (!campoTipo) return;
 
-      if (typeof fecha === "string" && fecha.includes("/")) {
-        let partes = fecha.split("/");
-        let formato = `${partes[2]}-${partes[1]}`; // yyyy-mm
+    let fecha = row[campoFecha];
+    if (!fecha) return;
 
-        if (formato !== filtroMes) {
-          pasaFiltroMes = false;
-        }
-      } else {
-        let f = new Date(fecha);
-        if (isNaN(f)) return;
+    let f;
 
-        let formato = `${f.getFullYear()}-${(f.getMonth() + 1).toString().padStart(2, "0")}`;
-
-        if (formato !== filtroMes) {
-          pasaFiltroMes = false;
-        }
-      }
+    if (typeof fecha === "string" && fecha.includes("/")) {
+      let partes = fecha.split("/");
+      f = new Date(`${partes[2]}-${partes[1]}-${partes[0]}`);
+    } else {
+      f = new Date(fecha);
     }
 
-    if (!pasaFiltroMes) return;
+    if (isNaN(f)) return;
 
-    // ======================
-    // 🔥 CONTAR TOTAL (YA FILTRADO POR MES)
-    // ======================
+    let formato = `${f.getFullYear()}-${(f.getMonth() + 1).toString().padStart(2, "0")}`;
+
+    if (formato !== filtroMes) return;
+
+    // ✅ CONTAR
     totalMatrimonios++;
 
-    // ======================
-    // 🔥 CONTAR POR TIPO
-    // ======================
     let tipo = normalizarTipoMatrimonio(row[campoTipo]);
     if (!tipo) return;
 
@@ -916,24 +925,19 @@ function generarDashboard() {
     conteo[tipo]++;
   });
 
-  // ======================
-  // 🔥 TARJETA TOTAL (POR MES)
-  // ======================
+  // 🔥 TARJETA TOTAL
   contenedor.innerHTML += `
     <div class="col-md-3">
-      <div class="card text-center shadow"
-           style="background:black; color:white;">
+      <div class="card text-center shadow" style="background:black; color:white;">
         <div class="card-body">
           <h3>${totalMatrimonios}</h3>
-          <p> Matrimonios ${filtroMes ? `` : ""}</p>
+          <p>Matrimonios</p>
         </div>
       </div>
     </div>
   `;
 
-  // ======================
   // 🔥 TARJETAS POR TIPO
-  // ======================
   Object.keys(conteo).forEach((tipo, i) => {
 
     let color = COLORES_GRAFICOS[i % COLORES_GRAFICOS.length];
@@ -945,7 +949,7 @@ function generarDashboard() {
              onclick="filtrarPorTipo('${tipo}')">
           <div class="card-body">
             <h3>${conteo[tipo]}</h3>
-            <p> ${tipo}</p>
+            <p>${tipo}</p>
           </div>
         </div>
       </div>
@@ -967,40 +971,44 @@ function generarDashboard() {
   // ======================
   const ctxBarra = document.getElementById("graficoBarras");
 
-  window.graficoBarra = new Chart(ctxBarra, {
-    type: "bar",
-    data: {
-      labels: labels,
-      datasets: [{
-        label: "Matrimonios",
-        data: valores,
-        backgroundColor: COLORES_GRAFICOS
-      }]
-    },
-    options: {
-      responsive: true
-    }
-  });
+  if (ctxBarra) {
+    window.graficoBarra = new Chart(ctxBarra, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Matrimonios",
+          data: valores,
+          backgroundColor: COLORES_GRAFICOS
+        }]
+      },
+      options: {
+        responsive: true
+      }
+    });
+  }
 
   // ======================
   // 🥧 GRÁFICO DE TORTA
   // ======================
   const ctxPie = document.getElementById("graficoTorta");
 
-  window.graficoPie = new Chart(ctxPie, {
-    type: "pie",
-    data: {
-      labels: labels,
-      datasets: [{
-        data: valores,
-        backgroundColor: COLORES_GRAFICOS
-      }]
-    },
-    options: {
-      responsive: true
-    }
-  });
-};
+  if (ctxPie) {
+    window.graficoPie = new Chart(ctxPie, {
+      type: "pie",
+      data: {
+        labels: labels,
+        datasets: [{
+          data: valores,
+          backgroundColor: COLORES_GRAFICOS
+        }]
+      },
+      options: {
+        responsive: true
+      }
+    });
+  }
+}
 function filtrarPorTipo(tipo) {
 
   let data = datosPorHoja[hojaActual];
@@ -1069,6 +1077,14 @@ function mostrarSoloHoja(hoja) {
     headersVisibles.forEach(h => {
       let valor = row[h] ?? "";
 
+      // 🔥 FORZAR FORMATO DE FECHA
+      if (
+        h.toLowerCase().includes("fecha") ||
+        h.toLowerCase().includes("f.")
+      ) {
+        valor = soloFecha(valor);
+      }
+
       if (h.toLowerCase().includes("matrimonio")) {
         valor = normalizarTipoMatrimonio(valor);
       }
@@ -1118,3 +1134,4 @@ function detectarCamposCompartidos() {
     }
   });
 }
+
