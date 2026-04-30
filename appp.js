@@ -1,7 +1,16 @@
- const COLORES_GRAFICOS = [
+const COLORES_GRAFICOS = [
   "#0d6efd", "#198754", "#ffc107", "#dc3545",
   "#6f42c1", "#20c997", "#fd7e14", "#0dcaf0"
 ];
+const COLECCIONES = {
+  "REPORTE DIARIO": "reporte_diario",
+  "REGISTRO DE ATENCION": "registro_atencion",
+  "RESULTADOS DE LABORATORIO": "resultados_laboratorio"
+};
+let indexSeleccionado = null;
+let filaSeleccionada = null;
+let hojaSeleccionada = null;
+let registroSeleccionado = null;
 
 let filtroGlobal = {
   nombre: "",
@@ -15,22 +24,142 @@ let datosPorHoja = {};
 let headersPorHoja = {};
 let hojaActual = "";
 let headersGlobales = [];
-
-// 🔥 NUEVO
 let camposCompartidos = {};
 let contadorOrden = 1;
 
-// PAGINACIÓN
 let paginaActual = 1;
 const filasPorPagina = 50;
-
-// HOJA OCULTA
 const HOJA_OCULTA = "tipo de matrimonio";
 
+function seleccionarFila(tr, hoja, index) {
+
+  document.querySelectorAll(".fila-seleccionada").forEach(f => {
+    f.classList.remove("fila-seleccionada");
+  });
+
+  tr.classList.add("fila-seleccionada");
+
+  filaSeleccionada = tr;
+  hojaSeleccionada = hoja;
+  indexSeleccionado = index; // 🔥 ESTA LÍNEA FALTABA
+
+  registroSeleccionado = datosPorHoja[hoja][index];
+}
+
+async function eliminarFila() {
+
+  if (!registroSeleccionado) {
+    mostrarToast("Selecciona una fila primero ⚠️", "error");
+    return;
+  }
+
+  if (!confirm("¿Seguro que deseas eliminar?")) return;
+
+  try {
+
+    if (registroSeleccionado._id) {
+      await fb.deleteDoc(
+        fb.doc(db, COLECCIONES[hojaSeleccionada], registroSeleccionado._id)
+      );
+    }
+
+    // 🔥 eliminar correctamente por ID (NO por índice)
+    datosPorHoja[hojaSeleccionada] =
+      datosPorHoja[hojaSeleccionada].filter(
+        r => r._id !== registroSeleccionado._id
+      );
+
+    mostrarToast("Eliminado correctamente ✅");
+
+    filaSeleccionada = null;
+    indexSeleccionado = null;
+    registroSeleccionado = null;
+
+    mostrarTodasLasTablas();
+
+  } catch (e) {
+    console.error(e);
+    mostrarToast("Error al eliminar ❌", "error");
+  }
+}
+function editarFila() {
+
+  if (indexSeleccionado === null || !filaSeleccionada) {
+    mostrarToast("Selecciona una fila primero ⚠️", "error");
+    return;
+  }
+
+  let celdas = filaSeleccionada.querySelectorAll("td");
+
+  celdas.forEach(td => {
+    let texto = td.innerText;
+    td.innerHTML = `<input type="text" value="${texto}" class="form-control form-control-sm">`;
+  });
+
+  mostrarToast("Editando en tabla ✏️");
+}
+
+async function guardarEdicion() {
+
+  if (!registroSeleccionado || !filaSeleccionada) {
+    mostrarToast("Selecciona una fila primero ⚠️", "error");
+    return;
+  }
+
+  try {
+
+    let headers = headersPorHoja[hojaSeleccionada];
+
+    let actualizado = {};
+
+    celdas.forEach((td, i) => {
+      let input = td.querySelector("input");
+      if (!input) return;
+
+      let h = headers[i];
+      let valor = input.value.toUpperCase();
+
+      if (h.toLowerCase().includes("matrimonio")) {
+        valor = normalizarTipoMatrimonio(valor);
+      }
+
+      actualizado[h] = valor;
+    });
+
+    // 🔥 actualizar en Firebase
+    if (registroSeleccionado._id) {
+      await fb.updateDoc(
+        fb.doc(db, COLECCIONES[hojaSeleccionada], registroSeleccionado._id),
+        actualizado
+      );
+    }
+
+    // 🔥 actualizar local por ID
+    datosPorHoja[hojaSeleccionada] =
+      datosPorHoja[hojaSeleccionada].map(r =>
+        r._id === registroSeleccionado._id
+          ? { ...r, ...actualizado }
+          : r
+      );
+
+    mostrarToast("Actualizado correctamente ✅");
+
+    filaSeleccionada = null;
+    indexSeleccionado = null;
+    registroSeleccionado = null;
+
+    mostrarTodasLasTablas();
+
+  } catch (error) {
+    console.error(error);
+    mostrarToast("Error al actualizar ❌", "error");
+  }
+}
 
 window.onload = async function () {
 
   await cargarDesdeSheets();
+  await cargarDesdeFirebase();
 
   cargarSelector();
   generarFormulario();
@@ -39,16 +168,17 @@ window.onload = async function () {
 
   hojaActual = Object.keys(datosPorHoja)[0];
   mostrarTodasLasTablas();
+
+   setTimeout(() => {
+    mostrarSeccion('formulario');
+  }, 300);
 };
-// =====================
-// DETECTAR CAMPO ORDEN
-// =====================
+
 function esCampoOrden(nombre) {
   if (!nombre) return false;
 
   nombre = nombre.toLowerCase().trim();
 
-  // 🔥 SOLO CAMPOS EXACTOS
   return (
     nombre === "n°" ||
     nombre === "nº" ||
@@ -69,10 +199,6 @@ function normalizarTipoMatrimonio(valor) {
 
   return valor.toString().toUpperCase();
 }
-
-
-
-// =====================
 async function cargarDesdeSheets() {
 
   const hojas = {
@@ -117,18 +243,13 @@ async function cargarDesdeSheets() {
       return obj;
     })
 
-      // 🔥 ELIMINAR FILAS VACÍAS (solo tienen N° o todo vacío)
       .filter(row => {
         let valores = Object.values(row);
-
-        // contar campos con datos reales
         let llenos = valores.filter(v => v && v.toString().trim() !== "");
 
-        // 🔥 mínimo 2 campos (ej: N° + nombre)
         return llenos.length > 1;
       });
 
-    // 🔥 AGREGAR N° SI NO EXISTE EN LOS DATOS
     data.forEach((row, index) => {
       let campoOrden = headers.find(h => esCampoOrden(h));
 
@@ -152,10 +273,6 @@ async function cargarDesdeSheets() {
   cargarTiposMatrimonio();
 
   console.log("🔥 TODAS LAS HOJAS CARGADAS:", datosPorHoja);
-  // 🔥 ASEGURAR QUE EXISTA N° EN TODAS LAS HOJAS
-  
-
-
 }
 
 function mostrarTodasLasTablas() {
@@ -167,21 +284,17 @@ function mostrarTodasLasTablas() {
 
     let data = datosPorHoja[hoja];
 
-    // 🔥 APLICAR FILTROS
     let dataFiltradaLocal = modoFiltrado
       ? aplicarFiltroAData(data)
       : data;
     console.log("👉 DATA FINAL:", datosPorHoja);
     console.log("👉 HEADERS:", headersPorHoja);
 
-    // 🔥 SI NO HAY RESULTADOS → NO MOSTRAR SECCIÓN
     if (!dataFiltradaLocal || dataFiltradaLocal.length === 0) continue;
 
     let headers = headersPorHoja[hoja];
 
-    // ============================
-    // 🔥 DETECTAR COLUMNAS CON DATOS
-    // ============================
+
     let headersVisibles = headers.filter(h => {
       return dataFiltradaLocal.some(row => {
         let valor = row[h];
@@ -202,28 +315,28 @@ function mostrarTodasLasTablas() {
     <div class="tabla-scroll">
       <table class="table table-bordered table-striped">
             <thead class="table-dark">
-              <tr>
-                ${headersVisibles.map(h => `<th>${h}</th>`).join("")}
-              </tr>
-            </thead>
+  <tr>
+    ${headersVisibles.map(h => `<th>${h}</th>`).join("")}
+    <th>Acciones</th>
+  </tr>
+</thead>
             <tbody>
     `;
 
-    dataFiltradaLocal.forEach(row => {
-      html += "<tr>";
+    dataFiltradaLocal.forEach((row) => {
+      let indexReal = datosPorHoja[hoja].findIndex(r => r === row);
+      html += `<tr onclick="seleccionarFila(this, '${hoja}', ${indexReal})">`;
+
 
       headersVisibles.forEach(h => {
         let valor = row[h] ?? "";
 
-        // 🔥 FORZAR FORMATO DE FECHA AL MOSTRAR
         if (
           h.toLowerCase().includes("fecha") ||
           h.toLowerCase().includes("f.")
         ) {
           valor = soloFecha(valor);
         }
-
-        // 🔥 NORMALIZAR MATRIMONIO
         if (h.toLowerCase().includes("matrimonio")) {
           valor = normalizarTipoMatrimonio(valor);
         }
@@ -272,21 +385,17 @@ function handleFile(e) {
 
       const sheet = workbook.Sheets[nombreHoja];
 
-      // 🔥 NORMALIZAR HEADERS
       let headers = (XLSX.utils.sheet_to_json(sheet, { header: 1 })[0] || [])
         .map(h => h ? h.toString().trim() : "");
 
-      // 🔥 ASEGURAR QUE EXISTA N°
       if (!headers.some(h => esCampoOrden(h))) {
         headers.unshift("N°");
       }
 
       let jsonData = XLSX.utils.sheet_to_json(sheet, { raw: true });
 
-      // 🔥 ELIMINAR COLUMNAS VACÍAS
       headers = headers.filter(h => h && h.trim() !== "");
 
-      // 🔥 👉 AGREGA ESTO AQUÍ 👇
       jsonData = jsonData.map(row => {
         let nuevo = {};
         headers.forEach(h => {
@@ -295,12 +404,10 @@ function handleFile(e) {
         return nuevo;
       });
 
-      // 🔥 ASEGURAR QUE EXISTA N°
       if (!headers.some(h => esCampoOrden(h))) {
         headers.unshift("N°");
       }
 
-      // 🔥 GUARDAR
       headersPorHoja[hoja] = headers;
 
 
@@ -309,14 +416,11 @@ function handleFile(e) {
           let valor = row[key];
           let nombreCampo = key.toLowerCase();
 
-          // 🔥 FORMATEAR FECHAS
           if (typeof valor === "number" && valor > 30000 && valor < 60000) {
             row[key] = soloFecha(valor);
           } else if (nombreCampo.includes("fecha")) {
             row[key] = soloFecha(valor);
           }
-
-          // 🔥 NORMALIZAR TIPO MATRIMONIO
           if (nombreCampo.replace(/\s+/g, "").includes("matrimonio")) {
             row[key] = normalizarTipoMatrimonio(valor);
           }
@@ -341,34 +445,23 @@ function handleFile(e) {
   };
 }
 
-// =====================
-// FORMATO FECHA
-// =====================
 function soloFecha(valor) {
   if (!valor) return "";
-
-  // 🔥 SI ES STRING CON "/"
   if (typeof valor === "string" && valor.includes("/")) {
     let partes = valor.split("/");
 
     if (partes.length === 3) {
-      let p1 = parseInt(partes[0]); // posible mes
-      let p2 = parseInt(partes[1]); // posible día
+      let p1 = parseInt(partes[0]);
+      let p2 = parseInt(partes[1]);
       let anio = partes[2];
-
-      // 🔥 SI EL PRIMER NÚMERO ES <= 12 → probablemente es MM/DD/YYYY
       if (p1 <= 12 && p2 <= 31) {
         return `${p2.toString().padStart(2, "0")}/${p1.toString().padStart(2, "0")}/${anio}`;
       }
-
-      // 🔥 SI NO → YA ESTÁ EN DD/MM/YYYY
       return `${p1.toString().padStart(2, "0")}/${p2.toString().padStart(2, "0")}/${anio}`;
     }
   }
 
   let fecha;
-
-  // 🔥 FECHA NUMÉRICA (EXCEL)
   if (typeof valor === "number") {
     fecha = new Date((valor - 25569) * 86400 * 1000);
   } else {
@@ -381,9 +474,6 @@ function soloFecha(valor) {
     }/${fecha.getFullYear()}`;
 }
 
-// =====================
-// FORMULARIO
-// =====================
 function generarFormulario() {
   const contenedor = document.getElementById("formularioDinamico");
   contenedor.innerHTML = "";
@@ -404,10 +494,10 @@ function generarFormulario() {
 
       let nombre = h.toLowerCase().trim();
 
-      // 🔥 OCULTAR N° SIEMPRE
+
       if (esCampoOrden(nombre)) return;
 
-      // 🔥 🔥 OCULTAR NOMBRE EN OTRAS SECCIONES
+
       if (
         (nombre.includes("nombre") || nombre.includes("apellidos")) &&
         hoja !== "REPORTE DIARIO"
@@ -417,7 +507,7 @@ function generarFormulario() {
 
       let tipo = "text";
 
-      // 🔥 detectar fechas mejorado
+
       if (
         nombre.includes("fecha") ||
         nombre.includes("f.") ||
@@ -430,10 +520,10 @@ function generarFormulario() {
 
       if (camposCompartidos[h]) {
 
-        // 🔥 SOLO CREAR UNA VEZ
+
         if (!inputsCreados[h]) {
 
-          let requerido = ""; // 🔥 TODO opcional
+          let requerido = "";
           contenedor.innerHTML += `
       <div class="col-md-4">
         <label>${h} (global)</label>
@@ -463,14 +553,10 @@ function generarFormulario() {
   });
 }
 
-// =====================
-// SELECTOR
-// =====================
 function cargarSelector() {
   const selector = document.getElementById("selectorHoja");
   selector.innerHTML = "";
 
-  // 🔥 OPCIÓN GENERAL
   selector.innerHTML += `<option value="">Todas las secciones</option>`;
 
   const hojas = Object.keys(datosPorHoja);
@@ -498,13 +584,10 @@ function cargarSelector() {
     document.getElementById("filtroFechaHasta").value = "";
     document.getElementById("filtroTipoMatrimonio").value = "";
 
-    // 🔥 SI NO HAY SECCIÓN SELECCIONADA → MOSTRAR TODO
     if (!hojaActual) {
       mostrarTodasLasTablas();
       return;
     }
-
-    // 🔥 SI HAY SECCIÓN → SOLO ESA
     mostrarSoloHoja(hojaActual);
   };
 }
@@ -548,9 +631,6 @@ function cargarTiposMatrimonio() {
   });
 }
 
-// =====================
-// TABLA
-// =====================
 function mostrarTabla(data) {
   const thead = document.getElementById("thead");
   const tbody = document.getElementById("tbody");
@@ -569,20 +649,17 @@ function mostrarTabla(data) {
     headers.forEach(h => {
 
       if (esCampoOrden(h)) {
-        // 🔥 SI VIENE DEL EXCEL, USARLO
         let valorExcel = row[h];
 
         if (valorExcel !== undefined && valorExcel !== "") {
           filas += `<td>${valorExcel}</td>`;
         } else {
-          // 🔥 SI NO EXISTE, GENERAR AUTOMÁTICO
+          O
           filas += `<td>${(paginaActual - 1) * filasPorPagina + index + 1}</td>`;
         }
 
       } else {
         let valor = row[h] ?? "";
-
-        // 🔥 NORMALIZAR MATRIMONIO EN TABLA
         if (h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")) {
           valor = normalizarTipoMatrimonio(valor);
         }
@@ -603,9 +680,6 @@ function mostrarTabla(data) {
   }, 100);
 }
 
-// =====================
-// PAGINACIÓN
-// =====================
 function mostrarTablaPaginada(data) {
   const inicio = (paginaActual - 1) * filasPorPagina;
   const fin = inicio + filasPorPagina;
@@ -627,9 +701,6 @@ function anteriorPagina() {
   }
 }
 
-// =====================
-// MOSTRAR TABLA
-// =====================
 function mostrarTablaManual() {
   document.getElementById("contenedorTabla").style.display = "block";
   document.getElementById("paginacion").style.display = "block";
@@ -654,7 +725,6 @@ function aplicarFiltroAData(data) {
 
   return data.filter(row => {
 
-    // 🔥 FILTRO NOMBRE
     if (nombre) {
       let encontrado = Object.values(row).some(valor =>
         valor &&
@@ -663,7 +733,6 @@ function aplicarFiltroAData(data) {
       if (!encontrado) return false;
     }
 
-    // 🔥 FILTRO TIPO MATRIMONIO
     if (tipoMatrimonio) {
       const campoTipo = Object.keys(row).find(k =>
         k.toLowerCase().replace(/\s+/g, "").includes("matrimonio")
@@ -673,7 +742,6 @@ function aplicarFiltroAData(data) {
       if (valor !== tipoMatrimonio.toUpperCase()) return false;
     }
 
-    // 🔥 FILTRO FECHA
     const campoFecha = Object.keys(row).find(k =>
       k.toLowerCase().includes("fecha")
     );
@@ -701,9 +769,7 @@ function aplicarFiltroAData(data) {
     return true;
   });
 }
-// =====================
-// FILTROS
-// =====================
+
 function aplicarFiltros() {
 
   modoFiltrado = true;
@@ -714,17 +780,11 @@ function aplicarFiltros() {
   filtroGlobal.tipoMatrimonio = document.getElementById("filtroTipoMatrimonio").value;
 
   document.getElementById("contenedorTabla").style.display = "block";
-
-  // 🔥 MOSTRAR TODAS LAS SECCIONES FILTRADAS
   mostrarTodasLasTablas();
 
-  // 🔥 OCULTAR PAGINACIÓN
   document.getElementById("paginacion").style.display = "none";
 }
 
-// =====================
-// LIMPIAR
-// =====================
 function limpiarFiltros() {
 
   modoFiltrado = false;
@@ -741,7 +801,6 @@ function limpiarFiltros() {
   document.getElementById("filtroFechaHasta").value = "";
   document.getElementById("filtroTipoMatrimonio").value = "";
 
-  // 🔥 VOLVER A MOSTRAR TODO
   mostrarTodasLasTablas();
 
   document.getElementById("paginacion").style.display = "block";
@@ -759,9 +818,6 @@ function mostrarTablaPaginadaGlobal() {
   mostrarTabla(data.slice(inicio, fin));
 }
 
-// =====================
-// AGREGAR DATO
-// =====================
 async function agregarDato() {
 
   let nombreGlobal = "";
@@ -770,14 +826,11 @@ async function agregarDato() {
   document.querySelectorAll("#formularioDinamico input").forEach(input => {
     let id = input.id.toLowerCase();
 
-    if (id.includes("nombre")) {
-      nombreGlobal = input.value;
-    }
-
-    if (id.includes("apellido")) {
-      apellidoGlobal = input.value;
-    }
+    if (id.includes("nombre")) nombreGlobal = input.value;
+    if (id.includes("apellido")) apellidoGlobal = input.value;
   });
+
+  let promesas = [];
 
   for (let hoja in headersPorHoja) {
 
@@ -813,20 +866,36 @@ async function agregarDato() {
       nuevo[h] = valor;
     });
 
-    // 👉 Guardar en memoria
-    datosPorHoja[hoja].push(nuevo);
+    // 🔥 GUARDAR EN FIREBASE (sin bloquear uno por uno)
+    const promesa = fb.addDoc(
+      fb.collection(db, COLECCIONES[hoja]),
+      nuevo
+    );
 
-    // 👉 Guardar en Firebase por hoja
-    
+    promesas.push(promesa);
+
+    // guardar local
+    datosPorHoja[hoja].push(nuevo);
   }
 
+  try {
+    await Promise.all(promesas); // 🔥 guarda TODO en paralelo
+    console.log("✅ Todo guardado en Firebase");
+
+    mostrarToast("Datos guardados correctamente ✅", "success");
+
+  } catch (error) {
+    console.error("❌ ERROR:", error);
+    mostrarToast("Error: " + error.message, "error");
+  }
+
+  // limpiar inputs
   document.querySelectorAll("#formularioDinamico input").forEach(i => i.value = "");
 
+  // refrescar tabla
   mostrarTodasLasTablas();
 }
-// =====================
-// ABRIR MODAL
-// =====================
+
 function abrirModalColumnas() {
 
   const contenedor = document.getElementById("listaColumnas");
@@ -849,9 +918,6 @@ function abrirModalColumnas() {
   modal.show();
 }
 
-// =====================
-// SELECCIONAR / DESELECCIONAR
-// =====================
 function seleccionarTodo(valor) {
   document.querySelectorAll(".columnaCheck").forEach(c => c.checked = valor);
 }
@@ -874,7 +940,6 @@ function generarDashboard() {
 
   let data = [];
 
-  // 🔥 SIEMPRE USAR TODAS LAS HOJAS
   for (let hoja in datosPorHoja) {
     data = data.concat(datosPorHoja[hoja]);
   }
@@ -915,7 +980,6 @@ function generarDashboard() {
 
     if (formato !== filtroMes) return;
 
-    // ✅ CONTAR
     totalMatrimonios++;
 
     let tipo = normalizarTipoMatrimonio(row[campoTipo]);
@@ -925,7 +989,6 @@ function generarDashboard() {
     conteo[tipo]++;
   });
 
-  // 🔥 TARJETA TOTAL
   contenedor.innerHTML += `
     <div class="col-md-3">
       <div class="card text-center shadow" style="background:black; color:white;">
@@ -937,7 +1000,6 @@ function generarDashboard() {
     </div>
   `;
 
-  // 🔥 TARJETAS POR TIPO
   Object.keys(conteo).forEach((tipo, i) => {
 
     let color = COLORES_GRAFICOS[i % COLORES_GRAFICOS.length];
@@ -956,9 +1018,6 @@ function generarDashboard() {
     `;
   });
 
-  // ======================
-  // 📊 DATOS PARA GRÁFICOS
-  // ======================
   let labels = Object.keys(conteo);
   let valores = Object.values(conteo);
 
@@ -966,9 +1025,6 @@ function generarDashboard() {
   if (window.graficoBarra) window.graficoBarra.destroy();
   if (window.graficoPie) window.graficoPie.destroy();
 
-  // ======================
-  // 📊 GRÁFICO DE BARRAS
-  // ======================
   const ctxBarra = document.getElementById("graficoBarras");
 
   if (ctxBarra) {
@@ -988,9 +1044,6 @@ function generarDashboard() {
     });
   }
 
-  // ======================
-  // 🥧 GRÁFICO DE TORTA
-  // ======================
   const ctxPie = document.getElementById("graficoTorta");
 
   if (ctxPie) {
@@ -1044,7 +1097,6 @@ function mostrarSoloHoja(hoja) {
 
   let headers = headersPorHoja[hoja];
 
-  // 🔥 FILTRAR COLUMNAS VACÍAS (igual que en todas)
   let headersVisibles = headers.filter(h => {
     return data.some(row => {
       let valor = row[h];
@@ -1071,13 +1123,12 @@ function mostrarSoloHoja(hoja) {
           <tbody>
   `;
 
-  data.forEach(row => {
-    html += "<tr>";
+  data.forEach((row, index) => {
+    html += `<tr onclick="seleccionarFila(this, '${hoja}', ${index})">`;
 
     headersVisibles.forEach(h => {
       let valor = row[h] ?? "";
 
-      // 🔥 FORZAR FORMATO DE FECHA
       if (
         h.toLowerCase().includes("fecha") ||
         h.toLowerCase().includes("f.")
@@ -1126,7 +1177,6 @@ function detectarCamposCompartidos() {
     }
   }
 
-  // 🔥 FORZAR NOMBRE COMO GLOBAL
   Object.keys(contador).forEach(campo => {
     let n = campo.toLowerCase();
     if (n.includes("nombre") || n.includes("apellidos")) {
@@ -1135,3 +1185,50 @@ function detectarCamposCompartidos() {
   });
 }
 
+async function cargarDesdeFirebase() {
+
+  const COLECCIONES = {
+    "REPORTE DIARIO": "reporte_diario",
+    "REGISTRO DE ATENCION": "registro_atencion",
+    "RESULTADOS DE LABORATORIO": "resultados_laboratorio"
+  };
+
+  for (let hoja in COLECCIONES) {
+
+    const snapshot = await fb.getDocs(
+      fb.collection(db, COLECCIONES[hoja])
+    );
+
+    snapshot.forEach(doc => {
+      datosPorHoja[hoja].push({
+        ...doc.data(),
+        _id: doc.id
+      });
+    });
+  }
+
+  console.log("🔥 Firebase cargado");
+}
+
+function mostrarToast(mensaje, tipo = "success") {
+
+  const container = document.getElementById("toastContainer");
+
+  const toast = document.createElement("div");
+  toast.className = `toast ${tipo}`;
+  toast.innerText = mensaje;
+
+  container.appendChild(toast);
+
+  // animar entrada
+  setTimeout(() => toast.classList.add("show"), 50);
+
+  // eliminar después
+  setTimeout(() => {
+    toast.classList.remove("show");
+
+    setTimeout(() => {
+      toast.remove();
+    }, 400);
+  }, 3000);
+}

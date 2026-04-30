@@ -138,18 +138,18 @@
      overflow-x: auto;
      border-radius: 10px;
  }
- 
+
  table {
      border-radius: 10px;
      overflow: hidden;
  }
- 
+
  th,
  td {
      white-space: nowrap;
      font-size: 13px;
  }
- 
+
  thead {
      background: #0d6efd;
      color: white;
@@ -501,15 +501,94 @@
  }
 
  .scroll-superior {
-  overflow-x: auto;
-  overflow-y: hidden;
-  height: 15px;
+     overflow-x: auto;
+     overflow-y: hidden;
+     height: 15px;
+ }
+
+ .scroll-bar {
+     height: 1px;
+ }
+
+ .tabla-scroll {
+     overflow-x: auto;
+ }
+
+ .toast-container {
+     position: fixed;
+     top: 20px;
+     right: 20px;
+     z-index: 9999;
+ }
+
+ .toast {
+     min-width: 250px;
+     margin-bottom: 10px;
+     padding: 12px 16px;
+     border-radius: 10px;
+     color: white;
+     font-weight: 500;
+     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+     opacity: 0;
+     transform: translateX(100%);
+     transition: all 0.4s ease;
+ }
+
+ .toast.show {
+     opacity: 1;
+     transform: translateX(0);
+ }
+
+ .toast.success {
+     background: linear-gradient(135deg, #198754, #20c997);
+ }
+
+ .toast.error {
+     background: linear-gradient(135deg, #dc3545, #ff6b6b);
+ }
+
+ .table tbody tr.fila-seleccionada td {
+     background-color: #ffe082 !important;
+ }
+.botones-flotantes {
+  position: fixed;
+  top: 120px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 999;
+
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(10px);
+
+  padding: 15px;
+  border-radius: 15px;
+
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
 }
 
-.scroll-bar {
-  height: 1px;
+.botones-flotantes button {
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.botones-flotantes button:hover {
+  transform: scale(1.05);
 }
 
 .tabla-scroll {
   overflow-x: auto;
+  background: white;
+  border-radius: 10px;
+}
+
+table {
+  background: white;
+}
+
+td, th {
+  white-space: nowrap;
 }
