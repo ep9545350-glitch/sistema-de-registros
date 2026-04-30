@@ -31,6 +31,29 @@ let paginaActual = 1;
 const filasPorPagina = 50;
 const HOJA_OCULTA = "tipo de matrimonio";
 
+function obtenerSiguienteOrden(hoja, campoOrden) {
+
+  let max = 0;
+
+  datosPorHoja[hoja].forEach(r => {
+    let val = Number(r[campoOrden]);
+    if (!isNaN(val) && val > max) {
+      max = val;
+    }
+  });
+
+  return max + 1;
+}
+
+function obtenerCampoOrden(headers) {
+  return headers.find(h =>
+    h.toLowerCase().includes("n°") ||
+    h.toLowerCase().includes("nº") ||
+    h.toLowerCase().includes("numero") ||
+    h.toLowerCase().includes("orden")
+  );
+}
+
 function seleccionarFila(tr, hoja, index) {
 
   document.querySelectorAll(".fila-seleccionada").forEach(f => {
@@ -169,7 +192,7 @@ window.onload = async function () {
   hojaActual = Object.keys(datosPorHoja)[0];
   mostrarTodasLasTablas();
 
-   setTimeout(() => {
+  setTimeout(() => {
     mostrarSeccion('formulario');
   }, 300);
 };
@@ -287,6 +310,20 @@ function mostrarTodasLasTablas() {
     let dataFiltradaLocal = modoFiltrado
       ? aplicarFiltroAData(data)
       : data;
+
+    // 👇 AQUÍ PEGAS EL ORDENAMIENTO
+    const campoOrden = headersPorHoja[hoja].find(h =>
+      h.toLowerCase().includes("n°") ||
+      h.toLowerCase().includes("nº") ||
+      h.toLowerCase().includes("numero") ||
+      h.toLowerCase().includes("orden")
+    );
+
+    if (campoOrden) {
+      dataFiltradaLocal = [...dataFiltradaLocal].sort((a, b) => {
+        return Number(a[campoOrden] || 0) - Number(b[campoOrden] || 0);
+      });
+    }
     console.log("👉 DATA FINAL:", datosPorHoja);
     console.log("👉 HEADERS:", headersPorHoja);
 
@@ -839,8 +876,7 @@ async function agregarDato() {
     headersPorHoja[hoja].forEach(h => {
 
       if (esCampoOrden(h)) {
-        let ultimo = datosPorHoja[hoja].length;
-        nuevo[h] = ultimo + 1;
+        nuevo[h] = obtenerSiguienteOrden(hoja, h);
         return;
       }
 
@@ -874,8 +910,16 @@ async function agregarDato() {
 
     promesas.push(promesa);
 
-    // guardar local
+   
     datosPorHoja[hoja].push(nuevo);
+
+  
+    const campoOrden = headersPorHoja[hoja]?.find(h => esCampoOrden(h));
+    if (campoOrden) {
+      datosPorHoja[hoja].sort((a, b) => {
+        return Number(a[campoOrden] || 0) - Number(b[campoOrden] || 0);
+      });
+    }
   }
 
   try {
@@ -1204,6 +1248,15 @@ async function cargarDesdeFirebase() {
         ...doc.data(),
         _id: doc.id
       });
+    });
+
+    // ✅ DENTRO del bucle, donde "hoja" aún existe
+    const campoOrden = headersPorHoja[hoja]?.find(h => esCampoOrden(h));
+
+    datosPorHoja[hoja].sort((a, b) => {
+      let valA = Number(campoOrden ? a[campoOrden] : (a.orden || a.numero || 0));
+      let valB = Number(campoOrden ? b[campoOrden] : (b.orden || b.numero || 0));
+      return valA - valB;
     });
   }
 
