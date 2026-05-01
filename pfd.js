@@ -1,6 +1,15 @@
 function generarPDFSeleccionado() {
 
-  let data = datosPorHoja[hojaActual];
+  // 🔥 tomar la hoja elegida en el modal
+  const selectorHojaPDF = document.getElementById("selectorHojaPDF");
+  const hojaParaPDF = selectorHojaPDF ? selectorHojaPDF.value : hojaActual;
+
+  if (!hojaParaPDF) {
+    mostrarAlerta("Selecciona una sección antes de exportar", "warning");
+    return;
+  }
+
+  let data = datosPorHoja[hojaParaPDF];
   if (!data || data.length === 0) {
     mostrarAlerta("No hay datos para exportar", "danger");
     return;
@@ -45,7 +54,6 @@ function generarPDFSeleccionado() {
       }
 
       if (isNaN(f)) return false;
-
       if (desde && f < new Date(desde)) return false;
       if (hasta && f > new Date(hasta)) return false;
     }
@@ -67,7 +75,7 @@ function generarPDFSeleccionado() {
   });
 
   // =====================
-  // FILAS (SIN ESPACIOS)
+  // FILAS
   // =====================
   const filas = dataFiltrada.map((row, index) => {
     return headersSeleccionados.map(h => {
@@ -81,13 +89,11 @@ function generarPDFSeleccionado() {
         valor = row[h] ?? "";
       }
 
-      // 🔥 NORMALIZAR MATRIMONIO EN PDF
       if (h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")) {
         valor = normalizarTipoMatrimonio(valor);
       }
 
-      // 🔥 limpiar espacios SOLO en registro
-      if (hojaActual.toLowerCase().includes("registro")) {
+      if (hojaParaPDF.toLowerCase().includes("registro")) {
         if (typeof valor === "string") {
           valor = valor.trim();
         }
@@ -105,83 +111,40 @@ function generarPDFSeleccionado() {
     format: "a4"
   });
 
-  const esRegistroAtencion = hojaActual.toLowerCase().includes("registro");
-
   // =====================
-  // ANCHO REAL DE COLUMNAS
+  // ANCHO DE COLUMNAS
   // =====================
   let columnStyles = {};
 
-  if (esRegistroAtencion) {
+  pdf.setFontSize(7);
 
-    pdf.setFontSize(7);
+  let totalWidth = 0;
 
-    let totalWidth = 0;
+  headersSeleccionados.forEach((h, i) => {
+    let maxWidth = pdf.getTextWidth(h);
 
-    headersSeleccionados.forEach((h, i) => {
-
-      let maxWidth = pdf.getTextWidth(h);
-
-      filas.forEach(f => {
-        let texto = (f[i] || "").toString().trim();
-        let w = pdf.getTextWidth(texto);
-        if (w > maxWidth) maxWidth = w;
-      });
-
-      maxWidth += 4;
-      maxWidth = Math.max(6, Math.min(maxWidth, 60));
-
-      columnStyles[i] = { cellWidth: maxWidth };
-      totalWidth += maxWidth;
+    filas.forEach(f => {
+      let texto = (f[i] || "").toString().trim();
+      let w = pdf.getTextWidth(texto);
+      if (w > maxWidth) maxWidth = w;
     });
 
-    // 🔥 ajustar a todo el ancho de la hoja
-    const pageWidth = pdf.internal.pageSize.getWidth() - 20;
-    const scale = pageWidth / totalWidth;
+    maxWidth += 4;
+    maxWidth = Math.max(6, Math.min(maxWidth, 60));
 
-    Object.keys(columnStyles).forEach(i => {
-      columnStyles[i].cellWidth *= scale;
-    });
-  }
+    columnStyles[i] = { cellWidth: maxWidth };
+    totalWidth += maxWidth;
+  });
 
-  const esResultadosLaboratorio = hojaActual.toLowerCase().includes("laboratorio");
+  const pageWidth = pdf.internal.pageSize.getWidth() - 20;
+  const scale = pageWidth / totalWidth;
 
-  if (esResultadosLaboratorio) {
-
-    pdf.setFontSize(7);
-
-    let totalWidth = 0;
-
-    headersSeleccionados.forEach((h, i) => {
-
-      let maxWidth = pdf.getTextWidth(h);
-
-      filas.forEach(f => {
-        let texto = (f[i] || "").toString().trim();
-        let w = pdf.getTextWidth(texto);
-        if (w > maxWidth) maxWidth = w;
-      });
-
-      maxWidth += 4; // padding
-
-      // límites para que no se desborde feo
-      maxWidth = Math.max(10, Math.min(maxWidth, 80));
-
-      columnStyles[i] = { cellWidth: maxWidth };
-      totalWidth += maxWidth;
-    });
-
-    // 🔥 ajustar todo al ancho de la hoja
-    const pageWidth = pdf.internal.pageSize.getWidth() - 20;
-    const scale = pageWidth / totalWidth;
-
-    Object.keys(columnStyles).forEach(i => {
-      columnStyles[i].cellWidth *= scale;
-    });
-  }
+  Object.keys(columnStyles).forEach(i => {
+    columnStyles[i].cellWidth *= scale;
+  });
 
   // =====================
-  // TABLA (TODO EN UNA HOJA)
+  // TABLA
   // =====================
   pdf.autoTable({
     head: [headers],
@@ -190,8 +153,8 @@ function generarPDFSeleccionado() {
     startY: 20,
     margin: { left: 10, right: 10 },
 
-    tableWidth: "wrap", // 🔥 TODO en una sola hoja
-    horizontalPageBreak: false, // 🔥 NO dividir
+    tableWidth: "wrap",
+    horizontalPageBreak: false,
 
     columnStyles: columnStyles,
 
@@ -209,24 +172,17 @@ function generarPDFSeleccionado() {
       fontStyle: "bold"
     },
 
-    // =====================
-    // CENTRADO INTELIGENTE
-    // =====================
     didParseCell: function (data) {
-
       if (data.section === "body") {
         let texto = (data.cell.text[0] || "").toString().trim();
-
         let esNumero = /^\d+$/.test(texto);
         let esFecha = /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(texto);
-
         if (esNumero || esFecha) {
           data.cell.styles.halign = "center";
         } else {
           data.cell.styles.halign = "left";
         }
       }
-
       if (data.section === "head") {
         data.cell.styles.halign = "center";
       }
@@ -236,11 +192,12 @@ function generarPDFSeleccionado() {
 
     didDrawPage: function () {
       pdf.setFontSize(12);
-      pdf.text("REPORTE GENERAL", 14, 10);
+      // 🔥 título con el nombre de la sección
+      pdf.text(`REPORTE - ${hojaParaPDF.toUpperCase()}`, 14, 10);
     }
   });
 
-  pdf.save("reporte.pdf");
+  pdf.save(`reporte_${hojaParaPDF.toLowerCase().replace(/ /g, "_")}.pdf`);
 }
 function exportarDashboardPDF() {
 

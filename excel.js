@@ -1,6 +1,4 @@
-// =====================
-// EXPORTAR
-// =====================
+
 function exportarExcel() {
   const wb = XLSX.utils.book_new();
 

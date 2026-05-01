@@ -14,6 +14,7 @@ let registroSeleccionado = null;
 
 let filtroGlobal = {
   nombre: "",
+  dni: "",
   desde: "",
   hasta: "",
   tipoMatrimonio: ""
@@ -86,7 +87,6 @@ async function eliminarFila() {
       );
     }
 
-    // 🔥 eliminar correctamente por ID (NO por índice)
     datosPorHoja[hojaSeleccionada] =
       datosPorHoja[hojaSeleccionada].filter(
         r => r._id !== registroSeleccionado._id
@@ -94,11 +94,20 @@ async function eliminarFila() {
 
     mostrarToast("Eliminado correctamente ✅");
 
+    // 🔥 guardar referencia antes de limpiar
+    const hojaAntes = hojaSeleccionada;
+
     filaSeleccionada = null;
     indexSeleccionado = null;
     registroSeleccionado = null;
+    hojaSeleccionada = null;
 
-    mostrarTodasLasTablas();
+    // 🔥 volver a la misma sección donde estaba el usuario
+    if (hojaAntes) {
+      mostrarSoloHoja(hojaAntes);
+    } else {
+      mostrarTodasLasTablas();
+    }
 
   } catch (e) {
     console.error(e);
@@ -122,6 +131,16 @@ function editarFila() {
   mostrarToast("Editando en tabla ✏️");
 }
 
+// 🔥 función para limpiar claves inválidas para Firebase
+function limpiarClave(clave) {
+  return clave
+    .replace(/\//g, "_")   // / → _
+    .replace(/~/g, "_")    // ~ → _
+    .replace(/\*/g, "_")   // * → _
+    .replace(/\[/g, "_")   // [ → _
+    .replace(/\]/g, "_");  // ] → _
+}
+
 async function guardarEdicion() {
 
   if (!registroSeleccionado || !filaSeleccionada) {
@@ -131,51 +150,73 @@ async function guardarEdicion() {
 
   try {
 
-    let headers = headersPorHoja[hojaSeleccionada];
+    let todosLosHeaders = headersPorHoja[hojaSeleccionada];
+
+    let headersVisibles = todosLosHeaders.filter(h => {
+      return datosPorHoja[hojaSeleccionada].some(row => {
+        let valor = row[h];
+        return valor !== null && valor !== undefined && valor.toString().trim() !== "";
+      });
+    });
+
+    let celdas = filaSeleccionada.querySelectorAll("td");
 
     let actualizado = {};
+    let actualizadoFirebase = {}; // 🔥 claves limpias para Firebase
 
     celdas.forEach((td, i) => {
       let input = td.querySelector("input");
       if (!input) return;
 
-      let h = headers[i];
+      let h = headersVisibles[i];
+      if (!h) return;
+
       let valor = input.value.toUpperCase();
 
       if (h.toLowerCase().includes("matrimonio")) {
         valor = normalizarTipoMatrimonio(valor);
       }
 
-      actualizado[h] = valor;
+      actualizado[h] = valor; // clave original para local
+      actualizadoFirebase[limpiarClave(h)] = valor; // 🔥 clave limpia para Firebase
     });
 
-    // 🔥 actualizar en Firebase
+    // 🔥 actualizar en Firebase con claves saneadas
     if (registroSeleccionado._id) {
       await fb.updateDoc(
         fb.doc(db, COLECCIONES[hojaSeleccionada], registroSeleccionado._id),
-        actualizado
+        actualizadoFirebase
       );
     }
 
-    // 🔥 actualizar local por ID
+    // 🔥 actualizar local con claves originales
     datosPorHoja[hojaSeleccionada] =
-      datosPorHoja[hojaSeleccionada].map(r =>
-        r._id === registroSeleccionado._id
-          ? { ...r, ...actualizado }
-          : r
-      );
+      datosPorHoja[hojaSeleccionada].map(r => {
+        if (registroSeleccionado._id) {
+          return r._id === registroSeleccionado._id ? { ...r, ...actualizado } : r;
+        } else {
+          return r === registroSeleccionado ? { ...r, ...actualizado } : r;
+        }
+      });
 
     mostrarToast("Actualizado correctamente ✅");
+
+    const hojaAntes = hojaSeleccionada;
 
     filaSeleccionada = null;
     indexSeleccionado = null;
     registroSeleccionado = null;
+    hojaSeleccionada = null;
 
-    mostrarTodasLasTablas();
+    if (hojaAntes) {
+      mostrarSoloHoja(hojaAntes);
+    } else {
+      mostrarTodasLasTablas();
+    }
 
   } catch (error) {
-    console.error(error);
-    mostrarToast("Error al actualizar ❌", "error");
+    console.error("❌ Error completo:", error);
+    mostrarToast("Error al actualizar: " + error.message + " ❌", "error");
   }
 }
 
@@ -311,7 +352,7 @@ function mostrarTodasLasTablas() {
       ? aplicarFiltroAData(data)
       : data;
 
-    // 👇 AQUÍ PEGAS EL ORDENAMIENTO
+    // 🔥 ordenar según si tiene campo de orden numérico o no
     const campoOrden = headersPorHoja[hoja].find(h =>
       h.toLowerCase().includes("n°") ||
       h.toLowerCase().includes("nº") ||
@@ -320,17 +361,20 @@ function mostrarTodasLasTablas() {
     );
 
     if (campoOrden) {
+      // tiene campo numérico → ordenar por él
       dataFiltradaLocal = [...dataFiltradaLocal].sort((a, b) => {
         return Number(a[campoOrden] || 0) - Number(b[campoOrden] || 0);
       });
+    } else {
+      // 🔥 sin campo de orden → respetar _orden de llegada
+      dataFiltradaLocal = [...dataFiltradaLocal].sort((a, b) => {
+        return (a._orden || 0) - (b._orden || 0);
+      });
     }
-    console.log("👉 DATA FINAL:", datosPorHoja);
-    console.log("👉 HEADERS:", headersPorHoja);
 
     if (!dataFiltradaLocal || dataFiltradaLocal.length === 0) continue;
 
     let headers = headersPorHoja[hoja];
-
 
     let headersVisibles = headers.filter(h => {
       return dataFiltradaLocal.some(row => {
@@ -341,29 +385,28 @@ function mostrarTodasLasTablas() {
 
     let html = `
       <div class="mb-5">
-    <h3 class="bg-dark text-white p-2 rounded">
-      ${hoja}
-    </h3>
+        <h3 class="bg-dark text-white p-2 rounded">
+          ${hoja}
+        </h3>
 
-    <div class="scroll-superior">
-      <div class="scroll-bar"></div>
-    </div>
+        <div class="scroll-superior">
+          <div class="scroll-bar"></div>
+        </div>
 
-    <div class="tabla-scroll">
-      <table class="table table-bordered table-striped">
+        <div class="tabla-scroll">
+          <table class="table table-bordered table-striped">
             <thead class="table-dark">
-  <tr>
-    ${headersVisibles.map(h => `<th>${h}</th>`).join("")}
-    <th>Acciones</th>
-  </tr>
-</thead>
+              <tr>
+                ${headersVisibles.map(h => `<th>${h}</th>`).join("")}
+                <th>Acciones</th>
+              </tr>
+            </thead>
             <tbody>
     `;
 
     dataFiltradaLocal.forEach((row) => {
       let indexReal = datosPorHoja[hoja].findIndex(r => r === row);
       html += `<tr onclick="seleccionarFila(this, '${hoja}', ${indexReal})">`;
-
 
       headersVisibles.forEach(h => {
         let valor = row[h] ?? "";
@@ -611,12 +654,14 @@ function cargarSelector() {
 
     filtroGlobal = {
       nombre: "",
+      dni: "",        // 🔥 faltaba
       desde: "",
       hasta: "",
       tipoMatrimonio: ""
     };
 
     document.getElementById("filtroNombre").value = "";
+    document.getElementById("filtroDni").value = "";  // 🔥 faltaba
     document.getElementById("filtroFechaDesde").value = "";
     document.getElementById("filtroFechaHasta").value = "";
     document.getElementById("filtroTipoMatrimonio").value = "";
@@ -756,6 +801,7 @@ function mostrarTablaManual() {
 function aplicarFiltroAData(data) {
 
   let nombre = filtroGlobal.nombre;
+  let dni = filtroGlobal.dni;       // 🔥 NUEVO
   let desde = filtroGlobal.desde;
   let hasta = filtroGlobal.hasta;
   let tipoMatrimonio = filtroGlobal.tipoMatrimonio;
@@ -764,17 +810,25 @@ function aplicarFiltroAData(data) {
 
     if (nombre) {
       let encontrado = Object.values(row).some(valor =>
-        valor &&
-        valor.toString().toLowerCase().includes(nombre)
+        valor && valor.toString().toLowerCase().includes(nombre)
       );
       if (!encontrado) return false;
+    }
+
+    // 🔥 FILTRO DNI
+    if (dni) {
+      const campoDni = Object.keys(row).find(k =>
+        k.toLowerCase().replace(/\s+/g, "").includes("dni") ||
+        k.toLowerCase().replace(/\s+/g, "").includes("ce")
+      );
+      let valorDni = campoDni ? (row[campoDni] || "").toString().toLowerCase() : "";
+      if (!valorDni.includes(dni)) return false;
     }
 
     if (tipoMatrimonio) {
       const campoTipo = Object.keys(row).find(k =>
         k.toLowerCase().replace(/\s+/g, "").includes("matrimonio")
       );
-
       let valor = campoTipo ? normalizarTipoMatrimonio(row[campoTipo]) : "";
       if (valor !== tipoMatrimonio.toUpperCase()) return false;
     }
@@ -784,12 +838,10 @@ function aplicarFiltroAData(data) {
     );
 
     if ((desde || hasta) && campoFecha) {
-
       let valorFecha = row[campoFecha];
       if (!valorFecha) return false;
 
       let f;
-
       if (typeof valorFecha === "string" && valorFecha.includes("/")) {
         let partes = valorFecha.split("/");
         f = new Date(`${partes[2]}-${partes[1]}-${partes[0]}`);
@@ -798,7 +850,6 @@ function aplicarFiltroAData(data) {
       }
 
       if (isNaN(f)) return false;
-
       if (desde && f < new Date(desde)) return false;
       if (hasta && f > new Date(hasta)) return false;
     }
@@ -812,6 +863,7 @@ function aplicarFiltros() {
   modoFiltrado = true;
 
   filtroGlobal.nombre = document.getElementById("filtroNombre").value.toLowerCase();
+  filtroGlobal.dni = document.getElementById("filtroDni").value.toLowerCase(); // 🔥 NUEVO
   filtroGlobal.desde = document.getElementById("filtroFechaDesde").value;
   filtroGlobal.hasta = document.getElementById("filtroFechaHasta").value;
   filtroGlobal.tipoMatrimonio = document.getElementById("filtroTipoMatrimonio").value;
@@ -828,12 +880,14 @@ function limpiarFiltros() {
 
   filtroGlobal = {
     nombre: "",
+    dni: "",         // 🔥 NUEVO
     desde: "",
     hasta: "",
     tipoMatrimonio: ""
   };
 
   document.getElementById("filtroNombre").value = "";
+  document.getElementById("filtroDni").value = "";  // 🔥 NUEVO
   document.getElementById("filtroFechaDesde").value = "";
   document.getElementById("filtroFechaHasta").value = "";
   document.getElementById("filtroTipoMatrimonio").value = "";
@@ -902,7 +956,7 @@ async function agregarDato() {
       nuevo[h] = valor;
     });
 
-    // 🔥 GUARDAR EN FIREBASE (sin bloquear uno por uno)
+    // 🔥 GUARDAR EN FIREBASE
     const promesa = fb.addDoc(
       fb.collection(db, COLECCIONES[hoja]),
       nuevo
@@ -910,24 +964,24 @@ async function agregarDato() {
 
     promesas.push(promesa);
 
-   
-    datosPorHoja[hoja].push(nuevo);
+    // 🔥 guardar local con _orden de llegada
+    const _ordenNuevo = datosPorHoja[hoja].length;
+    datosPorHoja[hoja].push({ ...nuevo, _orden: _ordenNuevo });
 
-  
+    // 🔥 solo ordenar si tiene campo numérico de orden
     const campoOrden = headersPorHoja[hoja]?.find(h => esCampoOrden(h));
     if (campoOrden) {
       datosPorHoja[hoja].sort((a, b) => {
         return Number(a[campoOrden] || 0) - Number(b[campoOrden] || 0);
       });
     }
+    // si NO tiene campoOrden → queda en orden de llegada ✅
   }
 
   try {
-    await Promise.all(promesas); // 🔥 guarda TODO en paralelo
+    await Promise.all(promesas);
     console.log("✅ Todo guardado en Firebase");
-
     mostrarToast("Datos guardados correctamente ✅", "success");
-
   } catch (error) {
     console.error("❌ ERROR:", error);
     mostrarToast("Error: " + error.message, "error");
@@ -939,27 +993,54 @@ async function agregarDato() {
   // refrescar tabla
   mostrarTodasLasTablas();
 }
-
 function abrirModalColumnas() {
 
   const contenedor = document.getElementById("listaColumnas");
   contenedor.innerHTML = "";
 
-  const headers = headersPorHoja[hojaActual];
+  // 🔥 selector de hoja dentro del modal
+  contenedor.innerHTML += `
+    <div class="col-12 mb-3">
+      <label class="fw-bold">Seleccionar sección a exportar:</label>
+      <select id="selectorHojaPDF" class="form-select" onchange="actualizarColumnasPDF()">
+        <option value="">-- Elige una sección --</option>
+        ${Object.keys(datosPorHoja).map(h => `<option value="${h}">${h}</option>`).join("")}
+      </select>
+    </div>
+    <div id="columnasCheckbox" class="row w-100"></div>
+  `;
 
-  headers.forEach(h => {
+  const modal = new bootstrap.Modal(document.getElementById('modalColumnas'));
+  modal.show();
+}
+
+function actualizarColumnasPDF() {
+
+  const hoja = document.getElementById("selectorHojaPDF").value;
+  const contenedor = document.getElementById("columnasCheckbox");
+
+  // 🔥 guardar los que estaban marcados antes de limpiar
+  const marcadosAntes = new Set(
+    Array.from(document.querySelectorAll(".columnaCheck:checked")).map(c => c.value)
+  );
+
+  contenedor.innerHTML = "";
+
+  if (!hoja || !headersPorHoja[hoja]) return;
+
+  headersPorHoja[hoja].forEach(h => {
+    // 🔥 si estaba marcado antes, mantenerlo marcado
+    const estabaMarcado = marcadosAntes.has(h);
+
     contenedor.innerHTML += `
       <div class="col-md-4">
         <div class="form-check">
-          <input class="form-check-input columnaCheck" type="checkbox" value="${h}" checked>
+          <input class="form-check-input columnaCheck" type="checkbox" value="${h}" ${estabaMarcado ? "checked" : ""}>
           <label class="form-check-label">${h}</label>
         </div>
       </div>
     `;
   });
-
-  const modal = new bootstrap.Modal(document.getElementById('modalColumnas'));
-  modal.show();
 }
 
 function seleccionarTodo(valor) {
@@ -1243,21 +1324,31 @@ async function cargarDesdeFirebase() {
       fb.collection(db, COLECCIONES[hoja])
     );
 
+    let contador = datosPorHoja[hoja]?.length || 0; // 🔥 continúa desde los de Sheets
+
     snapshot.forEach(doc => {
       datosPorHoja[hoja].push({
         ...doc.data(),
-        _id: doc.id
+        _id: doc.id,
+        _orden: contador++ // 🔥 asigna orden de llegada
       });
     });
 
-    // ✅ DENTRO del bucle, donde "hoja" aún existe
     const campoOrden = headersPorHoja[hoja]?.find(h => esCampoOrden(h));
 
-    datosPorHoja[hoja].sort((a, b) => {
-      let valA = Number(campoOrden ? a[campoOrden] : (a.orden || a.numero || 0));
-      let valB = Number(campoOrden ? b[campoOrden] : (b.orden || b.numero || 0));
-      return valA - valB;
-    });
+    if (campoOrden) {
+      // tiene campo de orden numérico → ordenar por ese campo
+      datosPorHoja[hoja].sort((a, b) => {
+        let valA = Number(a[campoOrden] || 0);
+        let valB = Number(b[campoOrden] || 0);
+        return valA - valB;
+      });
+    } else {
+      // 🔥 NO tiene campo de orden → respetar orden de llegada
+      datosPorHoja[hoja].sort((a, b) => {
+        return (a._orden || 0) - (b._orden || 0);
+      });
+    }
   }
 
   console.log("🔥 Firebase cargado");
