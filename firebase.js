@@ -26,7 +26,7 @@ const firebaseConfig = {
 
 // INIT
 const app = initializeApp(firebaseConfig);
-
+  
 // AUTH
 const auth = getAuth(app);
 
