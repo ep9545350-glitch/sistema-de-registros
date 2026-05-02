@@ -993,16 +993,25 @@ async function agregarDato() {
   // refrescar tabla
   mostrarTodasLasTablas();
 }
+// 🔥 Estado persistente de columnas seleccionadas por hoja
+let columnasSeleccionadas = {}; // { "REPORTE DIARIO": Set(["col1","col2"]), ... }
+
 function abrirModalColumnas() {
 
   const contenedor = document.getElementById("listaColumnas");
   contenedor.innerHTML = "";
 
-  // 🔥 selector de hoja dentro del modal
-  contenedor.innerHTML += `
+  // Inicializar selecciones si no existen aún
+  for (let hoja in datosPorHoja) {
+    if (!columnasSeleccionadas[hoja]) {
+      columnasSeleccionadas[hoja] = new Set();
+    }
+  }
+
+  contenedor.innerHTML = `
     <div class="col-12 mb-3">
       <label class="fw-bold">Seleccionar sección a exportar:</label>
-      <select id="selectorHojaPDF" class="form-select" onchange="actualizarColumnasPDF()">
+      <select id="selectorHojaPDF" class="form-select" onchange="guardarYActualizarColumnas()">
         <option value="">-- Elige una sección --</option>
         ${Object.keys(datosPorHoja).map(h => `<option value="${h}">${h}</option>`).join("")}
       </select>
@@ -1014,37 +1023,96 @@ function abrirModalColumnas() {
   modal.show();
 }
 
+function guardarYActualizarColumnas() {
+
+  // 1️⃣ Guardar selecciones actuales ANTES de cambiar la vista
+  document.querySelectorAll(".columnaCheck").forEach(c => {
+    // Buscar a qué hoja pertenece este checkbox (guardamos data-hoja en cada uno)
+    const hoja = c.dataset.hoja;
+    if (!hoja) return;
+    if (!columnasSeleccionadas[hoja]) columnasSeleccionadas[hoja] = new Set();
+
+    if (c.checked) {
+      columnasSeleccionadas[hoja].add(c.value);
+    } else {
+      columnasSeleccionadas[hoja].delete(c.value);
+    }
+  });
+
+  // 2️⃣ Renderizar columnas de la nueva hoja seleccionada
+  actualizarColumnasPDF();
+}
+
 function actualizarColumnasPDF() {
 
   const hoja = document.getElementById("selectorHojaPDF").value;
   const contenedor = document.getElementById("columnasCheckbox");
-
-  // 🔥 guardar los que estaban marcados antes de limpiar
-  const marcadosAntes = new Set(
-    Array.from(document.querySelectorAll(".columnaCheck:checked")).map(c => c.value)
-  );
-
   contenedor.innerHTML = "";
 
   if (!hoja || !headersPorHoja[hoja]) return;
 
-  headersPorHoja[hoja].forEach(h => {
-    // 🔥 si estaba marcado antes, mantenerlo marcado
-    const estabaMarcado = marcadosAntes.has(h);
+  if (!columnasSeleccionadas[hoja]) {
+    columnasSeleccionadas[hoja] = new Set();
+  }
+
+  // Detectar campos que ya fueron mostrados en OTRAS secciones seleccionadas
+  // para no repetirlos
+  const camposYaMostrados = new Set();
+  for (let otraHoja in columnasSeleccionadas) {
+    if (otraHoja === hoja) continue;
+    if (!headersPorHoja[otraHoja]) continue;
+    headersPorHoja[otraHoja].forEach(h => camposYaMostrados.add(h));
+  }
+
+  headersPorHoja[hoja]?.forEach(h => {
+    const esRepetido = camposYaMostrados.has(h);
+    const estabaMarcado = columnasSeleccionadas[hoja].has(h);
 
     contenedor.innerHTML += `
       <div class="col-md-4">
         <div class="form-check">
-          <input class="form-check-input columnaCheck" type="checkbox" value="${h}" ${estabaMarcado ? "checked" : ""}>
-          <label class="form-check-label">${h}</label>
+          <input 
+            class="form-check-input columnaCheck" 
+            type="checkbox" 
+            value="${h}" 
+            data-hoja="${hoja}"
+            ${estabaMarcado ? "checked" : ""}
+            ${esRepetido ? 'title="Este campo ya existe en otra sección" style="opacity:0.5"' : ""}
+          >
+          <label class="form-check-label ${esRepetido ? "text-muted" : ""}">
+            ${h}${esRepetido ? " <small>(en otra sección)</small>" : ""}
+          </label>
         </div>
       </div>
     `;
   });
+
+  // 3️⃣ Escuchar cambios en tiempo real para guardar al instante
+  document.querySelectorAll(".columnaCheck").forEach(c => {
+    c.addEventListener("change", () => {
+      const h = c.dataset.hoja;
+      if (!columnasSeleccionadas[h]) columnasSeleccionadas[h] = new Set();
+      if (c.checked) {
+        columnasSeleccionadas[h].add(c.value);
+      } else {
+        columnasSeleccionadas[h].delete(c.value);
+      }
+    });
+  });
 }
 
 function seleccionarTodo(valor) {
-  document.querySelectorAll(".columnaCheck").forEach(c => c.checked = valor);
+  const hoja = document.getElementById("selectorHojaPDF")?.value;
+  document.querySelectorAll(".columnaCheck").forEach(c => {
+    c.checked = valor;
+    if (!hoja) return;
+    if (!columnasSeleccionadas[hoja]) columnasSeleccionadas[hoja] = new Set();
+    if (valor) {
+      columnasSeleccionadas[hoja].add(c.value);
+    } else {
+      columnasSeleccionadas[hoja].delete(c.value);
+    }
+  });
 }
 
 function generarDashboard() {

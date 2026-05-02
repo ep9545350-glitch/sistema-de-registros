@@ -1,70 +1,118 @@
 function generarPDFSeleccionado() {
 
-  // 🔥 tomar la hoja elegida en el modal
-  const selectorHojaPDF = document.getElementById("selectorHojaPDF");
-  const hojaParaPDF = selectorHojaPDF ? selectorHojaPDF.value : hojaActual;
+  // 🔥 Guardar checkboxes visibles actualmente
+  document.querySelectorAll(".columnaCheck").forEach(c => {
+    const hoja = c.dataset.hoja;
+    if (!hoja) return;
+    if (!columnasSeleccionadas[hoja]) columnasSeleccionadas[hoja] = new Set();
+    if (c.checked) {
+      columnasSeleccionadas[hoja].add(c.value);
+    } else {
+      columnasSeleccionadas[hoja].delete(c.value);
+    }
+  });
 
-  if (!hojaParaPDF) {
-    mostrarAlerta("Selecciona una sección antes de exportar", "warning");
-    return;
-  }
+  // 🔥 Verificar que haya al menos una columna seleccionada
+  const totalSeleccionado = Object.values(columnasSeleccionadas)
+    .reduce((acc, set) => acc + set.size, 0);
 
-  let data = datosPorHoja[hojaParaPDF];
-  if (!data || data.length === 0) {
-    mostrarAlerta("No hay datos para exportar", "danger");
-    return;
-  }
-
-  const checks = document.querySelectorAll(".columnaCheck:checked");
-
-  if (checks.length === 0) {
+  if (totalSeleccionado === 0) {
     mostrarAlerta("Selecciona al menos una columna", "warning");
     return;
   }
 
-  const headersSeleccionados = Array.from(checks).map(c => c.value);
-
-  const campoFecha = Object.keys(data[0]).find(k => k.toLowerCase().includes("fecha"));
-  const campoNombre = Object.keys(data[0]).find(k => k.toLowerCase().includes("nombre"));
-
   let desde = document.getElementById("filtroFechaDesde").value;
   let hasta = document.getElementById("filtroFechaHasta").value;
 
-  // =====================
-  // FILTRAR DATOS
-  // =====================
-  let dataFiltrada = data.filter(row => {
+  // ── Construir lista de headers globales sin duplicados ────────
+  // Respeta el orden de aparición por hoja
+  const headersGlobalesOrdenados = [];
+  const headersVistos = new Set();
 
-    if (campoNombre && (!row[campoNombre] || row[campoNombre].trim() === "")) {
-      return false;
-    }
+  for (let hoja in columnasSeleccionadas) {
+    const cols = columnasSeleccionadas[hoja];
+    if (!cols || cols.size === 0) continue;
+    cols.forEach(col => {
+      if (!headersVistos.has(col)) {
+        headersVistos.add(col);
+        headersGlobalesOrdenados.push(col);
+      }
+    });
+  }
 
-    if (campoFecha && (desde || hasta)) {
+  if (headersGlobalesOrdenados.length === 0) {
+    mostrarAlerta("No hay columnas para exportar", "warning");
+    return;
+  }
 
-      let valorFecha = row[campoFecha];
-      if (!valorFecha) return false;
+  // ── Combinar filas de TODAS las hojas en una sola lista ───────
+  // Los campos que no pertenecen a la hoja quedan vacíos ("")
+  let mapaFilas = new Map();
 
-      let f;
+  for (let hoja in columnasSeleccionadas) {
+    const cols = columnasSeleccionadas[hoja];
+    if (!cols || cols.size === 0) continue;
 
-      if (typeof valorFecha === "string" && valorFecha.includes("/")) {
-        let partes = valorFecha.split("/");
-        f = new Date(`${partes[2]}-${partes[1]}-${partes[0]}`);
-      } else {
-        f = new Date(valorFecha);
+    let data = datosPorHoja[hoja];
+    if (!data || data.length === 0) continue;
+
+    const campoFecha = Object.keys(data[0]).find(k => k.toLowerCase().includes("fecha"));
+    const campoNombre = Object.keys(data[0]).find(k => k.toLowerCase().includes("nombre"));
+
+    let dataFiltrada = data.filter(row => {
+      if (campoNombre && (!row[campoNombre] || row[campoNombre].toString().trim() === "")) {
+        return false;
+      }
+      return true;
+    });
+
+    dataFiltrada.forEach((row, index) => {
+
+      // 🔥 CLAVE ÚNICA (usa nombre o ID si tienes)
+      let key = campoNombre ? row[campoNombre] : index;
+
+      if (!mapaFilas.has(key)) {
+        mapaFilas.set(key, {});
       }
 
-      if (isNaN(f)) return false;
-      if (desde && f < new Date(desde)) return false;
-      if (hasta && f > new Date(hasta)) return false;
-    }
+      let filaObj = mapaFilas.get(key);
 
-    return true;
+      cols.forEach(h => {
+        let valor;
+
+        if (esCampoOrden(h)) {
+          let v = row[h];
+          valor = (v !== undefined && v !== "") ? v : index + 1;
+        } else {
+          valor = row[h] ?? "";
+        }
+
+        if (h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")) {
+          valor = normalizarTipoMatrimonio(valor);
+        }
+
+        if (typeof valor === "string") valor = valor.trim();
+
+        filaObj[h] = valor;
+      });
+
+    });
+  }
+
+  let filasCombinadas = [];
+
+  mapaFilas.forEach(obj => {
+    let fila = headersGlobalesOrdenados.map(h => obj[h] || "");
+    filasCombinadas.push(fila);
   });
 
-  // =====================
-  // HEADERS
-  // =====================
-  const headers = headersSeleccionados.map(h => {
+  if (filasCombinadas.length === 0) {
+    mostrarAlerta("No hay datos para exportar con los filtros aplicados", "warning");
+    return;
+  }
+
+  // ── Headers formateados con salto de línea ────────────────────
+  const headersFormateados = headersGlobalesOrdenados.map(h => {
     let palabras = h.split(" ");
     if (palabras.length >= 2) {
       let mitad = Math.ceil(palabras.length / 2);
@@ -74,102 +122,89 @@ function generarPDFSeleccionado() {
     return h;
   });
 
-  // =====================
-  // FILAS
-  // =====================
-  const filas = dataFiltrada.map((row, index) => {
-    return headersSeleccionados.map(h => {
-
-      let valor;
-
-      if (esCampoOrden(h)) {
-        let valorExcel = row[h];
-        valor = (valorExcel !== undefined && valorExcel !== "") ? valorExcel : index + 1;
-      } else {
-        valor = row[h] ?? "";
-      }
-
-      if (h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")) {
-        valor = normalizarTipoMatrimonio(valor);
-      }
-
-      if (hojaParaPDF.toLowerCase().includes("registro")) {
-        if (typeof valor === "string") {
-          valor = valor.trim();
-        }
-      }
-
-      return valor;
-    });
-  });
-
+  // ── Calcular anchos de columna ────────────────────────────────
   const { jsPDF } = window.jspdf;
-
-  const pdf = new jsPDF({
-    orientation: "landscape",
-    unit: "mm",
-    format: "a4"
-  });
-
-  // =====================
-  // ANCHO DE COLUMNAS
-  // =====================
-  let columnStyles = {};
+  const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
   pdf.setFontSize(7);
 
+  let columnStyles = {};
   let totalWidth = 0;
 
-  headersSeleccionados.forEach((h, i) => {
+  headersGlobalesOrdenados.forEach((h, i) => {
     let maxWidth = pdf.getTextWidth(h);
-
-    filas.forEach(f => {
-      let texto = (f[i] || "").toString().trim();
-      let w = pdf.getTextWidth(texto);
+    filasCombinadas.forEach(f => {
+      let w = pdf.getTextWidth((f[i] || "").toString().trim());
       if (w > maxWidth) maxWidth = w;
     });
-
     maxWidth += 4;
     maxWidth = Math.max(6, Math.min(maxWidth, 60));
-
     columnStyles[i] = { cellWidth: maxWidth };
     totalWidth += maxWidth;
   });
 
   const pageWidth = pdf.internal.pageSize.getWidth() - 20;
   const scale = pageWidth / totalWidth;
-
   Object.keys(columnStyles).forEach(i => {
     columnStyles[i].cellWidth *= scale;
   });
 
-  // =====================
-  // TABLA
-  // =====================
+  // ── Título: muestra las secciones combinadas ──────────────────
+  const seccionesIncluidas = Object.entries(columnasSeleccionadas)
+    .filter(([, set]) => set.size > 0)
+    .map(([hoja]) => hoja)
+    .join(" + ");
+
+  // 🔥 LOGO
+  const logo = new Image();
+  logo.src = "ESCUDO_MPT_2.png"; // misma ruta que usas en HTML
+
+
+
+  // ── Tabla única ───────────────────────────────────────────────
   pdf.autoTable({
-    head: [headers],
-    body: filas,
 
-    startY: 20,
+    head: [
+      [
+        {
+          content: "ATENCION A CONTRIBUYENTES",
+          colSpan: headersFormateados.length,
+          styles: {
+            halign: "center",
+            fillColor: [180, 180, 180],
+            textColor: [0, 0, 0],
+            fontStyle: "bold",
+            fontSize: 10,
+            lineWidth: 0.4,     // 🔥 borde fuerte
+            lineColor: [0, 0, 0]
+          }
+        }
+      ],
+      headersFormateados
+    ],
+
+    body: filasCombinadas,
+
+    startY: 25,
     margin: { left: 10, right: 10 },
-
     tableWidth: "wrap",
-    horizontalPageBreak: false,
-
-    columnStyles: columnStyles,
+    columnStyles,
 
     styles: {
       fontSize: 7,
-      cellPadding: 0.3,
+      cellPadding: 0.5,
       overflow: "linebreak",
-      cellWidth: "wrap"
+      lineWidth: 0.2,
+      lineColor: [0, 0, 0]
     },
 
     headStyles: {
-      fillColor: [0, 0, 0],
-      textColor: [255, 255, 255],
+      fillColor: [205, 205, 205],
+      textColor: [0, 0, 0],
       halign: "center",
-      fontStyle: "bold"
+      fontStyle: "bold",
+      lineWidth: 0.3,
+      lineColor: [0, 0, 0]
     },
 
     didParseCell: function (data) {
@@ -177,27 +212,33 @@ function generarPDFSeleccionado() {
         let texto = (data.cell.text[0] || "").toString().trim();
         let esNumero = /^\d+$/.test(texto);
         let esFecha = /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(texto);
-        if (esNumero || esFecha) {
-          data.cell.styles.halign = "center";
-        } else {
-          data.cell.styles.halign = "left";
-        }
-      }
-      if (data.section === "head") {
-        data.cell.styles.halign = "center";
+        data.cell.styles.halign = (esNumero || esFecha) ? "center" : "left";
       }
     },
 
-    theme: "grid",
-
+    // 🔥 👉 AQUÍ VA EXACTAMENTE 👇
     didDrawPage: function () {
-      pdf.setFontSize(12);
-      // 🔥 título con el nombre de la sección
-      pdf.text(`REPORTE - ${hojaParaPDF.toUpperCase()}`, 14, 10);
-    }
+
+      const logo = new Image();
+      logo.src = "ESCUDO_MPT_2.png";
+
+      pdf.addImage(logo, "PNG", 14, 8, 15, 15);
+
+      pdf.setFontSize(11);
+      pdf.text(seccionesIncluidas.toUpperCase(), 35, 15);
+
+    },
+
+    theme: "grid"
   });
 
-  pdf.save(`reporte_${hojaParaPDF.toLowerCase().replace(/ /g, "_")}.pdf`);
+  // ── Nombre del archivo ────────────────────────────────────────
+  const nombreArchivo = Object.entries(columnasSeleccionadas)
+    .filter(([, set]) => set.size > 0)
+    .map(([hoja]) => hoja.toLowerCase().replace(/ /g, "_"))
+    .join("_y_");
+
+  pdf.save(`reporte_${nombreArchivo}.pdf`);
 }
 function exportarDashboardPDF() {
 
