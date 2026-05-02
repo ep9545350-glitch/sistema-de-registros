@@ -45,7 +45,11 @@
 
             <div class="row mb-3">
               <div class="col-md-4">
-                <input type="month" id="filtroMesDashboard" class="form-control">
+                <input type="date" id="filtroFechaDesdeDashboard" class="form-control" placeholder="Desde">
+              </div>
+
+              <div class="col-md-4">
+                <input type="date" id="filtroFechaHastaDashboard" class="form-control" placeholder="Hasta">
               </div>
               <div class="col-md-4">
                 <button class="btn btn-primary" onclick="generarDashboard()">Filtrar</button>
@@ -76,7 +80,7 @@
             <div id="formularioDinamico" class="row g-2"></div>
 
             <button class="btn btn-primary mt-3" onclick="agregarDato()">Agregar</button>
-            <button class="btn btn-success mt-3" onclick="exportarExcel()">Exportar</button>
+            
 
           </div>
         </div>
@@ -90,7 +94,7 @@
             <!-- SELECTOR -->
             <select id="selectorHoja" class="form-select mb-2"></select>
 
-            <button class="btn btn-info mb-3" onclick="mostrarTablaManual()">Mostrar Tabla</button>
+           
 
             <!-- 🔍 FILTROS -->
             <div class="row g-2 mb-3">

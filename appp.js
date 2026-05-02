@@ -227,7 +227,7 @@ window.onload = async function () {
 
   cargarSelector();
   generarFormulario();
-  activarFiltrosEnTiempoReal();
+ 
   cargarTiposMatrimonio();
 
   hojaActual = Object.keys(datosPorHoja)[0];
@@ -527,31 +527,84 @@ function handleFile(e) {
 
 function soloFecha(valor) {
   if (!valor) return "";
-  if (typeof valor === "string" && valor.includes("/")) {
-    let partes = valor.split("/");
 
+  let v = valor.toString().trim();
+
+  // 🔥 Si ya viene como DD/MM/YYYY → devolver tal cual
+  if (v.includes("/")) {
+    let partes = v.split("/");
     if (partes.length === 3) {
-      let p1 = parseInt(partes[0]);
-      let p2 = parseInt(partes[1]);
-      let anio = partes[2];
-      if (p1 <= 12 && p2 <= 31) {
-        return `${p2.toString().padStart(2, "0")}/${p1.toString().padStart(2, "0")}/${anio}`;
-      }
-      return `${p1.toString().padStart(2, "0")}/${p2.toString().padStart(2, "0")}/${anio}`;
+      let d = partes[0].padStart(2, "0");
+      let m = partes[1].padStart(2, "0");
+      let a = partes[2];
+      return `${d}/${m}/${a}`; // DD/MM/YYYY sin invertir
     }
   }
 
-  let fecha;
+  // Si es número serial de Excel
   if (typeof valor === "number") {
-    fecha = new Date((valor - 25569) * 86400 * 1000);
-  } else {
-    fecha = new Date(valor);
+    let fecha = new Date((valor - 25569) * 86400 * 1000);
+    if (!isNaN(fecha)) {
+      return `${fecha.getDate().toString().padStart(2, "0")}/${(fecha.getMonth() + 1).toString().padStart(2, "0")}/${fecha.getFullYear()}`;
+    }
   }
 
-  if (isNaN(fecha)) return valor;
+  // Si es string tipo YYYY-MM-DD (de input date)
+  if (v.includes("-")) {
+    let partes = v.split("-");
+    if (partes.length === 3 && partes[0].length === 4) {
+      return `${partes[2]}/${partes[1]}/${partes[0]}`; // YYYY-MM-DD → DD/MM/YYYY
+    }
+  }
 
-  return `${fecha.getDate().toString().padStart(2, "0")}/${(fecha.getMonth() + 1).toString().padStart(2, "0")
-    }/${fecha.getFullYear()}`;
+  return v;
+}
+
+// 🔥 Convierte DD/MM/YYYY → YYYY-MM-DD para comparar con input type="date"
+function fechaAISO(valor) {
+  if (!valor) return "";
+  let v = valor.toString().trim();
+
+  // 🔥 Limpiar caracteres raros que vienen del CSV
+  v = v.replace(/\r/g, "").replace(/\n/g, "").trim();
+
+  // Formato DD/MM/YYYY o D/M/YYYY
+  if (v.includes("/")) {
+    let partes = v.split("/");
+    if (partes.length === 3) {
+      let d = partes[0].trim().padStart(2, "0");
+      let m = partes[1].trim().padStart(2, "0");
+      let a = partes[2].trim();
+      // Si el año tiene solo 2 dígitos
+      if (a.length === 2) a = "20" + a;
+      let iso = `${a}-${m}-${d}`;
+      if (!isNaN(new Date(iso))) return iso;
+    }
+  }
+
+  // Formato YYYY-MM-DD
+  if (v.includes("-")) {
+    let partes = v.split("-");
+    if (partes.length === 3 && partes[0].trim().length === 4) {
+      return v; // ya es YYYY-MM-DD
+    }
+    // Formato DD-MM-YYYY
+    if (partes.length === 3 && partes[2].trim().length === 4) {
+      let d = partes[0].trim().padStart(2, "0");
+      let m = partes[1].trim().padStart(2, "0");
+      let a = partes[2].trim();
+      let iso = `${a}-${m}-${d}`;
+      if (!isNaN(new Date(iso))) return iso;
+    }
+  }
+
+  // Intentar parsear directamente como último recurso
+  let intento = new Date(v);
+  if (!isNaN(intento)) {
+    return intento.toISOString().split("T")[0];
+  }
+
+  return "";
 }
 
 function generarFormulario() {
@@ -841,17 +894,12 @@ function aplicarFiltroAData(data) {
       let valorFecha = row[campoFecha];
       if (!valorFecha) return false;
 
-      let f;
-      if (typeof valorFecha === "string" && valorFecha.includes("/")) {
-        let partes = valorFecha.split("/");
-        f = new Date(`${partes[2]}-${partes[1]}-${partes[0]}`);
-      } else {
-        f = new Date(valorFecha);
-      }
+      // 🔥 Usar fechaAISO para convertir DD/MM/YYYY → YYYY-MM-DD
+      let fechaISO = fechaAISO(valorFecha.toString().trim());
+      if (!fechaISO) return false;
 
-      if (isNaN(f)) return false;
-      if (desde && f < new Date(desde)) return false;
-      if (hasta && f > new Date(hasta)) return false;
+      if (desde && fechaISO < desde) return false;
+      if (hasta && fechaISO > hasta) return false;
     }
 
     return true;
@@ -1120,71 +1168,78 @@ function generarDashboard() {
   const contenedor = document.getElementById("dashboardMatrimonio");
   contenedor.innerHTML = "";
 
-  let filtroMes = document.getElementById("filtroMesDashboard").value;
+  let desde = document.getElementById("filtroFechaDesdeDashboard").value;
+  let hasta = document.getElementById("filtroFechaHastaDashboard").value;
 
-  if (!filtroMes) {
+  if (!desde && !hasta) {
     contenedor.innerHTML = `
       <div class="alert alert-danger text-center">
-        ⚠️ Debe seleccionar un mes antes de generar el dashboard
+        ⚠️ Debe seleccionar al menos una fecha (desde o hasta)
       </div>
     `;
     return;
   }
 
-  let data = [];
-
-  for (let hoja in datosPorHoja) {
-    data = data.concat(datosPorHoja[hoja]);
-  }
-
-  if (!data || data.length === 0) return;
-
-  let conteo = {};
   let totalMatrimonios = 0;
+  let conteo = {};
 
+  const data = datosPorHoja["REPORTE DIARIO"] || [];
+
+  // 🔥 Detectar el campo matrimonio UNA SOLA VEZ desde los headers
+  const headerRD = headersPorHoja["REPORTE DIARIO"] || [];
+  const campoTipoFijo = headerRD.find(h =>
+    h.toLowerCase().replace(/\s+/g, "")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .includes("matrimonio")
+  );
+
+  // 🔥 Detectar el campo fecha UNA SOLA VEZ
+  const campoFechaFijo = headerRD.find(h =>
+    h.toLowerCase().includes("fecha") ||
+    h.toLowerCase().includes("f.")
+  );
+
+  // Debug — puedes quitarlo después
+  console.log("Campo tipo matrimonio detectado:", campoTipoFijo);
+  console.log("Campo fecha detectado:", campoFechaFijo);
+  console.log("Total filas REPORTE DIARIO:", data.length);
+
+  if (!campoTipoFijo || !campoFechaFijo) {
+    contenedor.innerHTML = `
+      <div class="alert alert-warning text-center">
+        ⚠️ No se encontró el campo de tipo matrimonio o fecha en REPORTE DIARIO
+      </div>
+    `;
+    return;
+  }
   data.forEach(row => {
 
-    let campoTipo = Object.keys(row).find(k =>
-      k.toLowerCase().replace(/\s+/g, "").includes("matrimonio")
-    );
+    let tipo = normalizarTipoMatrimonio(row[campoTipoFijo]);
+    if (!tipo || tipo.trim() === "") return;
 
-    let campoFecha = Object.keys(row).find(k =>
-      k.toLowerCase().includes("fecha") ||
-      k.toLowerCase().includes("f.")
-    );
+    let valorFecha = row[campoFechaFijo];
+    if (!valorFecha || valorFecha.toString().trim() === "") return;
 
-    if (!campoTipo) return;
+    // 🔥 Usar fechaAISO que ya sabe que el formato es DD/MM/YYYY
+    let fechaISO = fechaAISO(valorFecha.toString().trim());
+    if (!fechaISO) return;
 
-    let fecha = row[campoFecha];
-    if (!fecha) return;
-
-    let f;
-
-    if (typeof fecha === "string" && fecha.includes("/")) {
-      let partes = fecha.split("/");
-      f = new Date(`${partes[2]}-${partes[1]}-${partes[0]}`);
-    } else {
-      f = new Date(fecha);
-    }
-
-    if (isNaN(f)) return;
-
-    let formato = `${f.getFullYear()}-${(f.getMonth() + 1).toString().padStart(2, "0")}`;
-
-    if (formato !== filtroMes) return;
+    if (desde && fechaISO < desde) return;
+    if (hasta && fechaISO > hasta) return;
 
     totalMatrimonios++;
-
-    let tipo = normalizarTipoMatrimonio(row[campoTipo]);
-    if (!tipo) return;
-
     if (!conteo[tipo]) conteo[tipo] = 0;
     conteo[tipo]++;
   });
+  // 🔥 Pon esto ANTES del data.forEach, no dentro
+  console.log("Ejemplo fecha guardada:", data[0]?.[campoFechaFijo]);
 
+  console.log("Total contado:", totalMatrimonios, "| Por tipo:", conteo);
+
+  // 🔥 TARJETA TOTAL
   contenedor.innerHTML += `
     <div class="col-md-3">
-      <div class="card text-center shadow" style="background:black; color:white;">
+      <div class="card text-center shadow" style="background:#FFA500; color:white;">
         <div class="card-body">
           <h3>${totalMatrimonios}</h3>
           <p>Matrimonios</p>
@@ -1193,9 +1248,17 @@ function generarDashboard() {
     </div>
   `;
 
+  // 🔥 TARJETAS POR TIPO
   Object.keys(conteo).forEach((tipo, i) => {
 
-    let color = COLORES_GRAFICOS[i % COLORES_GRAFICOS.length];
+    let color;
+    if (tipo === "MASIVO") {
+      color = "#51D1F6";
+    } else if (tipo === "PAGADO") {
+      color = "#0d6efd";
+    } else {
+      color = COLORES_GRAFICOS[i % COLORES_GRAFICOS.length];
+    }
 
     contenedor.innerHTML += `
       <div class="col-md-3">
@@ -1214,44 +1277,41 @@ function generarDashboard() {
   let labels = Object.keys(conteo);
   let valores = Object.values(conteo);
 
-  // 🔥 DESTRUIR GRÁFICOS ANTERIORES
   if (window.graficoBarra) window.graficoBarra.destroy();
   if (window.graficoPie) window.graficoPie.destroy();
 
   const ctxBarra = document.getElementById("graficoBarras");
-
   if (ctxBarra) {
     window.graficoBarra = new Chart(ctxBarra, {
       type: "bar",
       data: {
-        labels: labels,
+        labels,
         datasets: [{
           label: "Matrimonios",
           data: valores,
-          backgroundColor: COLORES_GRAFICOS
+          backgroundColor: labels.map(t =>
+            t === "MASIVO" ? "#51D1F6" : t === "PAGADO" ? "#0d6efd" : COLORES_GRAFICOS[0]
+          )
         }]
       },
-      options: {
-        responsive: true
-      }
+      options: { responsive: true }
     });
   }
 
   const ctxPie = document.getElementById("graficoTorta");
-
   if (ctxPie) {
     window.graficoPie = new Chart(ctxPie, {
       type: "pie",
       data: {
-        labels: labels,
+        labels,
         datasets: [{
           data: valores,
-          backgroundColor: COLORES_GRAFICOS
+          backgroundColor: labels.map(t =>
+            t === "MASIVO" ? "#51D1F6" : t === "PAGADO" ? "#0d6efd" : COLORES_GRAFICOS[0]
+          )
         }]
       },
-      options: {
-        responsive: true
-      }
+      options: { responsive: true }
     });
   }
 }
@@ -1392,34 +1452,45 @@ async function cargarDesdeFirebase() {
       fb.collection(db, COLECCIONES[hoja])
     );
 
-    let contador = datosPorHoja[hoja]?.length || 0; // 🔥 continúa desde los de Sheets
+    // 🔥 Obtener los N° de orden ya existentes en Sheets para no duplicar
+    const campoOrden = headersPorHoja[hoja]?.find(h => esCampoOrden(h));
+    const ordenesExistentes = new Set(
+      datosPorHoja[hoja]
+        .filter(r => !r._id) // solo los de Sheets
+        .map(r => campoOrden ? String(r[campoOrden]).trim() : null)
+        .filter(Boolean)
+    );
+
+    let contador = datosPorHoja[hoja]?.length || 0;
 
     snapshot.forEach(doc => {
+      const docData = doc.data();
+
+      // 🔥 Si el N° ya existe en Sheets, no agregar (es duplicado)
+      if (campoOrden) {
+        const ordenDoc = String(docData[campoOrden] || "").trim();
+        if (ordenesExistentes.has(ordenDoc)) return; // 🔥 SKIP duplicado
+      }
+
       datosPorHoja[hoja].push({
-        ...doc.data(),
+        ...docData,
         _id: doc.id,
-        _orden: contador++ // 🔥 asigna orden de llegada
+        _orden: contador++
       });
     });
 
-    const campoOrden = headersPorHoja[hoja]?.find(h => esCampoOrden(h));
-
     if (campoOrden) {
-      // tiene campo de orden numérico → ordenar por ese campo
-      datosPorHoja[hoja].sort((a, b) => {
-        let valA = Number(a[campoOrden] || 0);
-        let valB = Number(b[campoOrden] || 0);
-        return valA - valB;
-      });
+      datosPorHoja[hoja].sort((a, b) =>
+        Number(a[campoOrden] || 0) - Number(b[campoOrden] || 0)
+      );
     } else {
-      // 🔥 NO tiene campo de orden → respetar orden de llegada
-      datosPorHoja[hoja].sort((a, b) => {
-        return (a._orden || 0) - (b._orden || 0);
-      });
+      datosPorHoja[hoja].sort((a, b) =>
+        (a._orden || 0) - (b._orden || 0)
+      );
     }
   }
 
-  console.log("🔥 Firebase cargado");
+  console.log("🔥 Firebase cargado. REPORTE DIARIO total:", datosPorHoja["REPORTE DIARIO"]?.length);
 }
 
 function mostrarToast(mensaje, tipo = "success") {
