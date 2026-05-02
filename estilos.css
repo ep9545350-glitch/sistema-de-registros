@@ -1,587 +1,753 @@
- body {
-     margin: 0;
-     overflow-x: hidden;
-     background: #f4f6f9;
-     font-family: 'Segoe UI', sans-serif;
- }
-
- .sidebar {
-     min-height: 100vh;
-     padding: 25px 15px;
-     color: white;
-     background: linear-gradient(180deg, #0f172a, #1e1b4b);
-     position: sticky;
-     top: 0;
-     height: 100vh;
-     box-shadow: 5px 0 30px rgba(0, 0, 0, 0.25);
-     overflow-y: auto;
- }
-
- .sidebar h5 {
-     font-weight: 700;
-     font-size: 18px;
-     text-align: center;
-     margin-bottom: 25px;
-     letter-spacing: 1px;
-     color: #ffffff;
- }
-
- .sidebar button {
-     width: 100%;
-     margin-bottom: 12px;
-
-     padding: 12px 14px;
-     border-radius: 12px;
-
-     border: none;
-     color: #e5e7eb;
-     font-weight: 500;
-     text-align: left;
-
-     background: rgba(255, 255, 255, 0.06);
-     backdrop-filter: blur(8px);
-
-     transition: all 0.25s ease;
-
-     display: flex;
-     align-items: center;
-     gap: 10px;
- }
-
- .sidebar button::before {
-     content: "•";
-     color: #60a5fa;
-     font-size: 18px;
-     margin-right: 6px;
- }
-
- .sidebar button:hover {
-     background: linear-gradient(90deg, #0d6efd, #6f42c1);
-     color: white;
-     transform: translateX(6px);
-     box-shadow: 0 8px 20px rgba(13, 110, 253, 0.3);
- }
-
- .sidebar button.active {
-     background: linear-gradient(90deg, #22c55e, #16a34a);
-     color: white;
-     box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3);
- }
-
- .sidebar button:not(:last-child) {
-     margin-bottom: 10px;
- }
-
- .sidebar::after {
-     content: "";
-     position: absolute;
-     top: 0;
-     right: 0;
-     width: 2px;
-     height: 100%;
-     background: linear-gradient(180deg, transparent, #3b82f6, transparent);
-     opacity: 0.5;
- }
-
- .contenido {
-     padding: 20px;
- }
-
- /* SECCIONES */
- .seccion {
-     display: none;
-     animation: fadeIn 0.4s ease;
- }
-
- .seccion.activa {
-     display: block;
- }
-
- .sidebar {
-     background: #111;
-     color: white;
-     min-height: 100vh;
-     padding: 15px;
- }
-
- .logo-sidebar {
-  width: 180px;
-  max-width: 100%;
-  height: auto;
-  border-radius: 12px;
-  object-fit: contain;
+/* ========================= BASE ========================= */
+* {
+    box-sizing: border-box;
 }
 
- @keyframes fadeIn {
-     from {
-         opacity: 0;
-         transform: translateY(10px);
-     }
+body {
+    margin: 0;
+    overflow-x: hidden;
+    background: #f4f6f9;
+    font-family: 'Segoe UI', sans-serif;
+}
 
-     to {
-         opacity: 1;
-         transform: translateY(0);
-     }
- }
+/* ========================= SIDEBAR ========================= */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 220px;
+    height: 100vh;
+    padding: 25px 15px;
+    color: white;
+    background: linear-gradient(180deg, #0f172a, #1e1b4b);
+    box-shadow: 5px 0 30px rgba(0, 0, 0, 0.25);
+    overflow-y: auto;
+    z-index: 1050;
+    transition: left 0.3s ease;
+}
 
- /* CARDS */
- .card {
-     border: none;
-     border-radius: 15px;
-     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
- }
+.sidebar h5 {
+    font-weight: 700;
+    font-size: 18px;
+    text-align: center;
+    margin-bottom: 25px;
+    letter-spacing: 1px;
+    color: #ffffff;
+}
 
- .card h5 {
-     font-weight: bold;
-     margin-bottom: 15px;
- }
+.sidebar button {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: none;
+    color: #e5e7eb;
+    font-weight: 500;
+    text-align: left;
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(8px);
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
 
- /* TABLA */
- .tabla-responsive {
-     overflow-x: auto;
-     border-radius: 10px;
- }
+.sidebar button::before {
+    content: "•";
+    color: #60a5fa;
+    font-size: 18px;
+    flex-shrink: 0;
+}
 
- table {
-     border-radius: 10px;
-     overflow: hidden;
- }
+.sidebar button:hover {
+    background: linear-gradient(90deg, #0d6efd, #6f42c1);
+    color: white;
+    transform: translateX(6px);
+    box-shadow: 0 8px 20px rgba(13, 110, 253, 0.3);
+}
 
- th,
- td {
-     white-space: nowrap;
-     font-size: 13px;
- }
+.sidebar button.active {
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+    color: white;
+    box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3);
+}
 
- thead {
-     background: #0d6efd;
-     color: white;
- }
+.btn-cerrar {
+    background: rgba(220, 53, 69, 0.25) !important;
+    color: #ff8a8a !important;
+}
 
- /* BOTONES */
- .btn {
-     border-radius: 10px;
-     transition: 0.2s;
- }
+.btn-cerrar:hover {
+    background: rgba(220, 53, 69, 0.6) !important;
+    color: white !important;
+    transform: translateX(6px) !important;
+}
 
- .btn:hover {
-     transform: scale(1.05);
- }
+.sidebar::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 2px;
+    height: 100%;
+    background: linear-gradient(180deg, transparent, #3b82f6, transparent);
+    opacity: 0.5;
+}
 
- /* INPUTS */
- .form-control,
- .form-select {
-     border-radius: 10px;
-     border: 1px solid #ddd;
- }
+.logo-sidebar {
+    width: 140px;
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    object-fit: contain;
+}
 
- .form-control:focus {
-     box-shadow: 0 0 5px rgba(13, 110, 253, 0.5);
-     border-color: #0d6efd;
- }
+/* ========================= OVERLAY ========================= */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+}
 
- .modal-content {
-     border-radius: 18px;
-     border: none;
-     overflow: hidden;
-     background: #ffffff;
-     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-     animation: modalPop 0.25s ease;
- }
+.sidebar-overlay.activa {
+    display: block;
+}
 
- @keyframes modalPop {
-     from {
-         transform: translateY(20px);
-         opacity: 0;
-     }
+/* ========================= TOGGLE BTN ========================= */
+.toggle-btn {
+    display: none;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 1100;
+    background: #0d6efd;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 18px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: background 0.2s;
+}
 
-     to {
-         transform: translateY(0);
-         opacity: 1;
-     }
- }
+.toggle-btn:hover {
+    background: #0b5ed7;
+}
 
- /* HEADER MÁS ELEGANTE */
- .modal-header {
-     background: linear-gradient(135deg, #0d6efd, #6f42c1);
-     color: white;
-     padding: 16px 20px;
-     border-bottom: none;
- }
+/* ========================= CONTENIDO ========================= */
+.contenido {
+    margin-left: 220px;
+    padding: 20px;
+    min-height: 100vh;
+}
 
- .modal-title {
-     font-weight: 600;
-     font-size: 18px;
-     letter-spacing: 0.3px;
- }
+/* ========================= SECCIONES ========================= */
+.seccion {
+    display: none;
+    animation: fadeIn 0.4s ease;
+}
 
- /* BOTÓN CERRAR */
- .btn-close-white {
-     filter: brightness(0) invert(1);
-     opacity: 0.9;
- }
+.seccion.activa {
+    display: block;
+}
 
- .btn-close-white:hover {
-     opacity: 1;
- }
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
 
- /* BODY MÁS LIMPIO */
- .modal-body {
-     padding: 20px;
-     background: #f8f9fc;
- }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
- /* CHECKBOX CARDS */
- #listaColumnas .form-check {
-     background: white;
-     padding: 10px 12px;
-     border-radius: 10px;
-     margin-bottom: 8px;
-     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-     transition: 0.2s;
- }
+/* ========================= CARDS ========================= */
+.card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+}
 
- #listaColumnas .form-check:hover {
-     transform: translateY(-2px);
-     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
- }
+.card h5 {
+    font-weight: bold;
+    margin-bottom: 15px;
+}
 
- .form-check-input {
-     cursor: pointer;
- }
+/* ========================= TABLA BASE ========================= */
+.tabla-responsive {
+    overflow-x: auto;
+    border-radius: 10px;
+}
 
- .form-check-label {
-     margin-left: 6px;
-     font-size: 14px;
- }
+table {
+    border-radius: 10px;
+    overflow: hidden;
+    background: white;
+    width: 100%;
+}
 
- /* FOOTER MÁS PRO */
- .modal-footer {
-     border-top: none;
-     background: white;
-     padding: 15px;
-     display: flex;
-     justify-content: space-between;
-     gap: 10px;
- }
+th,
+td {
+    white-space: nowrap;
+    font-size: 13px;
+}
 
- /* BOTONES MODAL */
- .modal-footer .btn {
-     border-radius: 10px;
-     font-weight: 500;
-     padding: 8px 14px;
-     transition: 0.2s;
- }
+thead {
+    background: #0d6efd;
+    color: white;
+}
 
- .modal-footer .btn:hover {
-     transform: translateY(-2px);
- }
+/* ========================= BOTONES ========================= */
+.btn {
+    border-radius: 10px;
+    transition: 0.2s;
+}
 
- /* BOTÓN EXPORTAR DESTACADO */
- .modal-footer .btn-danger {
-     background: linear-gradient(135deg, #dc3545, #ff4d6d);
-     border: none;
- }
+.btn:hover {
+    transform: scale(1.05);
+}
 
- .modal-footer .btn-warning {
-     background: linear-gradient(135deg, #ffc107, #ffb703);
-     border: none;
-     color: #000;
- }
+/* ========================= INPUTS ========================= */
+.form-control,
+.form-select {
+    border-radius: 10px;
+    border: 1px solid #ddd;
+}
 
- .modal-footer .btn-secondary {
-     background: #e9ecef;
-     border: none;
-     color: #333;
- }
+.form-control:focus {
+    box-shadow: 0 0 5px rgba(13, 110, 253, 0.5);
+    border-color: #0d6efd;
+}
 
- /* RESPONSIVE */
- @media (max-width: 768px) {
+/* ========================= MODAL ========================= */
+.modal-content {
+    border-radius: 18px;
+    border: none;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    animation: modalPop 0.25s ease;
+}
 
-     .sidebar {
-         position: fixed;
-         width: 220px;
-         left: -220px;
-         top: 0;
-         z-index: 1000;
-     }
+@keyframes modalPop {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
 
-     .sidebar.activa {
-         left: 0;
-     }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
 
-     .contenido {
-         margin-left: 0;
-         padding: 15px;
-     }
+.modal-header {
+    background: linear-gradient(135deg, #0d6efd, #6f42c1);
+    color: white;
+    padding: 16px 20px;
+    border-bottom: none;
+}
 
-     .toggle-btn {
-         position: fixed;
-         top: 10px;
-         left: 10px;
-         z-index: 1100;
-         background: #0d6efd;
-         color: white;
-         border: none;
-         border-radius: 8px;
-         padding: 8px 12px;
-     }
- }
+.modal-title {
+    font-weight: 600;
+    font-size: 18px;
+    letter-spacing: 0.3px;
+}
 
- /* =========================
-   🔥 SECCIÓN TABLA PRO
+.btn-close-white {
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
+}
+
+.btn-close-white:hover {
+    opacity: 1;
+}
+
+.modal-body {
+    padding: 20px;
+    background: #f8f9fc;
+}
+
+#listaColumnas .form-check {
+    background: white;
+    padding: 10px 12px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    transition: 0.2s;
+}
+
+#listaColumnas .form-check:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.form-check-input {
+    cursor: pointer;
+}
+
+.form-check-label {
+    margin-left: 6px;
+    font-size: 14px;
+}
+
+.modal-footer {
+    border-top: none;
+    background: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.modal-footer .btn {
+    border-radius: 10px;
+    font-weight: 500;
+    padding: 8px 14px;
+    transition: 0.2s;
+}
+
+.modal-footer .btn:hover {
+    transform: translateY(-2px);
+}
+
+.modal-footer .btn-danger {
+    background: linear-gradient(135deg, #dc3545, #ff4d6d);
+    border: none;
+}
+
+.modal-footer .btn-warning {
+    background: linear-gradient(135deg, #ffc107, #ffb703);
+    border: none;
+    color: #000;
+}
+
+.modal-footer .btn-secondary {
+    background: #e9ecef;
+    border: none;
+    color: #333;
+}
+
+/* ========================= SECCIÓN TABLA ========================= */
+#tabla .card-body {
+    background: #ffffff;
+    border-radius: 15px;
+    padding: 20px;
+}
+
+#tabla h5 {
+    font-weight: 700;
+    font-size: 20px;
+    margin-bottom: 15px;
+    color: #1e293b;
+}
+
+#tabla .row.g-2 {
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.03);
+}
+
+#tabla .form-control,
+#tabla .form-select {
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    font-size: 14px;
+}
+
+#tabla .form-control:focus,
+#tabla .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 8px rgba(13, 110, 253, 0.3);
+}
+
+#tabla .d-flex .btn {
+    border-radius: 10px;
+    font-weight: 500;
+    padding: 8px 14px;
+}
+
+#tabla .btn-warning {
+    background: linear-gradient(135deg, #facc15, #f59e0b);
+    border: none;
+    color: #000;
+}
+
+#tabla .btn-secondary {
+    background: #e5e7eb;
+    border: none;
+    color: #374151;
+}
+
+#tabla .btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border: none;
+}
+
+/* ========================= CONTENEDOR TABLA ========================= */
+#contenedorTabla {
+    background: white;
+    border-radius: 15px;
+    padding: 10px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    overflow-x: auto;
+}
+
+#contenedorTabla table {
+    border-collapse: collapse;
+    width: 100%;
+    background: white;
+}
+
+#contenedorTabla thead {
+    background: linear-gradient(135deg, #0d6efd, #6f42c1);
+}
+
+#contenedorTabla th {
+    color: white;
+    font-size: 13px;
+    padding: 10px;
+    text-align: left;
+    border: 1px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+#contenedorTabla td {
+    padding: 10px;
+    font-size: 13px;
+    border: 1px solid #e5e7eb;
+}
+
+#contenedorTabla tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+#contenedorTabla tbody tr:hover {
+    background: #f1f5ff;
+    transition: 0.2s;
+}
+
+/* ========================= PAGINACIÓN ========================= */
+#paginacion {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+#paginacion .btn {
+    border-radius: 8px;
+    padding: 6px 12px;
+    background: #e5e7eb;
+    border: none;
+}
+
+#paginacion .btn:hover {
+    background: #0d6efd;
+    color: white;
+}
+
+/* ========================= SCROLL ========================= */
+.scroll-superior {
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: 15px;
+}
+
+.scroll-bar {
+    height: 1px;
+}
+
+.tabla-scroll {
+    overflow-x: auto;
+    background: white;
+    border-radius: 10px;
+}
+
+/* ========================= TOAST ========================= */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 90vw;
+}
+
+.toast {
+    min-width: 220px;
+    max-width: 90vw;
+    margin-bottom: 10px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    color: white;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.4s ease;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.toast.success {
+    background: linear-gradient(135deg, #198754, #20c997);
+}
+
+.toast.error {
+    background: linear-gradient(135deg, #dc3545, #ff6b6b);
+}
+
+/* ========================= FILA SELECCIONADA ========================= */
+.table tbody tr.fila-seleccionada td {
+    background-color: #ffe082 !important;
+}
+
+/* ========================= BOTONES FLOTANTES ========================= */
+.botones-flotantes {
+    position: fixed;
+    top: 120px;
+    right: 20px;
+    left: auto;
+    cursor: grab;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 998;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(10px);
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.botones-flotantes button {
+    border: none;
+    border-radius: 10px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    font-size: 13px;
+    padding: 8px 14px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.botones-flotantes button:hover {
+    transform: scale(1.05);
+}
+
+/* =========================
+   📱 TABLET (≤992px)
 ========================= */
+@media (max-width: 992px) {
 
- #tabla .card-body {
-     background: #ffffff;
-     border-radius: 15px;
-     padding: 20px;
- }
+    .sidebar {
+        width: 200px;
+    }
 
- /* TÍTULO */
- #tabla h5 {
-     font-weight: 700;
-     font-size: 20px;
-     margin-bottom: 15px;
-     color: #1e293b;
- }
+    .contenido {
+        margin-left: 200px;
+    }
 
- /* =========================
-   🔥 FILTROS PRO
+    .logo-sidebar {
+        width: 110px;
+    }
+
+    .botones-flotantes {
+        top: 80px;
+        right: 12px;
+        padding: 10px;
+        gap: 8px;
+    }
+
+    .botones-flotantes button {
+        font-size: 12px;
+        padding: 7px 10px;
+    }
+}
+
+/* =========================
+   📱 MÓVIL (≤768px)
 ========================= */
+@media (max-width: 768px) {
 
- #tabla .row.g-2 {
-     background: #f8fafc;
-     padding: 15px;
-     border-radius: 12px;
-     box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.03);
- }
+    /* TOGGLE VISIBLE */
+    .toggle-btn {
+        display: block;
+    }
 
- /* INPUTS MÁS LIMPIOS */
- #tabla .form-control,
- #tabla .form-select {
-     border-radius: 10px;
-     border: 1px solid #e5e7eb;
-     font-size: 14px;
- }
+    /* SIDEBAR OCULTO */
+    .sidebar {
+        left: -240px;
+        width: 230px;
+        padding-top: 20px;
+    }
 
- /* EFECTO FOCUS */
- #tabla .form-control:focus,
- #tabla .form-select:focus {
-     border-color: #0d6efd;
-     box-shadow: 0 0 8px rgba(13, 110, 253, 0.3);
- }
+    .sidebar.activa {
+        left: 0;
+    }
 
- /* =========================
-   🔥 BOTONES TABLA
+    /* CONTENIDO FULL */
+    .contenido {
+        margin-left: 0;
+        padding: 10px;
+        margin-top: 55px;
+    }
+
+    /* CARDS */
+    .card-body {
+        padding: 12px !important;
+    }
+
+    /* TÍTULOS */
+    #tabla h5,
+    #dashboard h5 {
+        font-size: 16px;
+    }
+
+    /* FILTROS 2 COLUMNAS */
+    #tabla .row.g-2>div {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+
+    /* BOTONES FILTRAR */
+    .d-flex.gap-2 {
+        flex-wrap: wrap;
+    }
+
+    .d-flex.gap-2 .btn {
+        flex: 1 1 auto;
+        min-width: 80px;
+        font-size: 13px;
+    }
+
+    /* DASHBOARD */
+    #dashboard .row.mb-3>div,
+    #dashboard .row.mt-4>div {
+        flex: 0 0 100%;
+        max-width: 100%;
+        margin-bottom: 12px;
+    }
+
+    /* TABLA COMPACTA */
+    #contenedorTabla th,
+    #contenedorTabla td {
+        font-size: 11px;
+        padding: 6px 8px;
+    }
+
+    /* PAGINACIÓN */
+    #paginacion .btn {
+        font-size: 13px;
+        padding: 6px 10px;
+    }
+
+    /* TOAST */
+    .toast-container {
+        top: 10px;
+        right: 10px;
+    }
+
+    .toast {
+        min-width: 160px;
+        font-size: 13px;
+    }
+
+    /* BOTONES FLOTANTES → BARRA INFERIOR */
+    .botones-flotantes {
+        top: auto !important;
+        bottom: 0 !important;
+        right: 0 !important;
+        left: 0 !important;
+        border-radius: 16px 16px 0 0;
+        flex-direction: row;
+        justify-content: space-around;
+        align-items: center;
+        padding: 10px 12px;
+        gap: 8px;
+        cursor: default;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .botones-flotantes button {
+        flex: 1;
+        font-size: 12px;
+        padding: 9px 4px;
+        text-align: center;
+    }
+
+    /* MODAL */
+    .modal-dialog {
+        margin: 8px;
+    }
+
+    .modal-footer {
+        flex-direction: column;
+    }
+
+    .modal-footer .btn {
+        width: 100%;
+    }
+
+    /* FORMULARIO */
+    #formularioDinamico>div {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+/* =========================
+   📱 MÓVIL PEQUEÑO (≤480px)
 ========================= */
+@media (max-width: 480px) {
 
- #tabla .d-flex .btn {
-     border-radius: 10px;
-     font-weight: 500;
-     padding: 8px 14px;
- }
+    .contenido {
+        padding: 6px;
+        margin-top: 52px;
+    }
 
- /* COLORES MÁS MODERNOS */
- #tabla .btn-warning {
-     background: linear-gradient(135deg, #facc15, #f59e0b);
-     border: none;
-     color: #000;
- }
+    #tabla h5,
+    #dashboard h5 {
+        font-size: 14px;
+    }
 
- #tabla .btn-secondary {
-     background: #e5e7eb;
-     border: none;
-     color: #374151;
- }
+    .logo-sidebar {
+        width: 90px;
+    }
 
- #tabla .btn-danger {
-     background: linear-gradient(135deg, #ef4444, #dc2626);
-     border: none;
- }
+    #contenedorTabla th,
+    #contenedorTabla td {
+        font-size: 10px;
+        padding: 5px;
+    }
 
- /* =========================
-   🔥 TABLA MODERNA PRO
-========================= */
+    /* FILTROS 1 COLUMNA */
+    #tabla .row.g-2>div {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
 
- #contenedorTabla {
-     background: white;
-     border-radius: 15px;
-     padding: 10px;
-     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
- }
+    .botones-flotantes button {
+        font-size: 11px;
+        padding: 8px 2px;
+    }
 
- /* TABLA EMPRESARIAL CUADRICULADA */
- #contenedorTabla table {
-     border-collapse: collapse;
-     /* 🔥 vuelve el estilo cuadriculado */
-     width: 100%;
-     background: white;
- }
-
- /* HEADER */
- #contenedorTabla thead {
-     background: linear-gradient(135deg, #0d6efd, #6f42c1);
- }
-
- #contenedorTabla th {
-     color: white;
-     font-size: 13px;
-     padding: 10px;
-     text-align: left;
-     border: 1px solid #dee2e6;
-     /* 🔥 líneas */
- }
-
- /* CELDAS */
- #contenedorTabla td {
-     padding: 10px;
-     font-size: 13px;
-     border: 1px solid #e5e7eb;
-     /* 🔥 cuadrícula */
- }
-
- /* FILAS ALTERNADAS */
- #contenedorTabla tbody tr:nth-child(even) {
-     background: #f8fafc;
- }
-
- #contenedorTabla tbody tr:hover {
-     background: #eaf1ff;
-     transition: 0.2s;
- }
-
- #contenedorTabla thead th {
-     position: sticky;
-     top: 0;
-     z-index: 2;
- }
-
- #contenedorTabla tbody tr:hover {
-     background: #f1f5ff;
-     transition: 0.2s;
- }
-
- #contenedorTabla tbody tr:nth-child(even) {
-     background: #fafafa;
- }
-
-
- #paginacion {
-     display: flex;
-     justify-content: center;
-     gap: 10px;
- }
-
- #paginacion .btn {
-     border-radius: 8px;
-     padding: 6px 12px;
-     background: #e5e7eb;
-     border: none;
- }
-
- #paginacion .btn:hover {
-     background: #0d6efd;
-     color: white;
- }
-
- #contenedorTabla thead th {
-     position: sticky;
-     top: 0;
-     z-index: 2;
- }
-
- .scroll-superior {
-     overflow-x: auto;
-     overflow-y: hidden;
-     height: 15px;
- }
-
- .scroll-bar {
-     height: 1px;
- }
-
- .tabla-scroll {
-     overflow-x: auto;
- }
-
- .toast-container {
-     position: fixed;
-     top: 20px;
-     right: 20px;
-     z-index: 9999;
- }
-
- .toast {
-     min-width: 250px;
-     margin-bottom: 10px;
-     padding: 12px 16px;
-     border-radius: 10px;
-     color: white;
-     font-weight: 500;
-     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-     opacity: 0;
-     transform: translateX(100%);
-     transition: all 0.4s ease;
- }
-
- .toast.show {
-     opacity: 1;
-     transform: translateX(0);
- }
-
- .toast.success {
-     background: linear-gradient(135deg, #198754, #20c997);
- }
-
- .toast.error {
-     background: linear-gradient(135deg, #dc3545, #ff6b6b);
- }
-
- .table tbody tr.fila-seleccionada td {
-     background-color: #ffe082 !important;
- }
-
- .botones-flotantes {
-     position: fixed;
-     top: 120px;
-     right: 20px;
-     display: flex;
-     flex-direction: column;
-     gap: 10px;
-     z-index: 999;
-
-     background: rgba(255, 255, 255, 0.9);
-     backdrop-filter: blur(10px);
-
-     padding: 15px;
-     border-radius: 15px;
-
-     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
- }
-
- .botones-flotantes button {
-     border: none;
-     border-radius: 10px;
-     font-weight: bold;
-     transition: all 0.2s ease;
- }
-
- .botones-flotantes button:hover {
-     transform: scale(1.05);
- }
-
- .tabla-scroll {
-     overflow-x: auto;
-     background: white;
-     border-radius: 10px;
- }
-
- table {
-     background: white;
- }
-
- td,
- th {
-     white-space: nowrap;
- }
+    .toggle-btn {
+        font-size: 16px;
+        padding: 6px 10px;
+    }
+}

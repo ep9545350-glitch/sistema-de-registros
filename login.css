@@ -6,44 +6,38 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-}
-
-/* CONTENEDOR */
-.login-container {
-    width: 100%;
-    max-width: 420px;
     padding: 20px;
 }
 
-/* LOGO */
-.logo-login {
-    width: 130px;
-    height: 130px;
-    object-fit: contain;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.15);
-    padding: 12px;
-    backdrop-filter: blur(8px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+.login-container {
+    width: 100%;
+    max-width: 420px;
 }
 
-/* CARD */
+.logo-login {
+    width: 160px;
+    height: 160px;
+    object-fit: contain;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+}
+
 .login-card {
     border: none;
     border-radius: 22px;
-    padding: 35px;
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+    padding: 30px;
+    background: rgba(255,255,255,0.95);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.25);
     animation: fadeIn 0.8s ease;
 }
 
-/* TITULO */
 .login-title {
     font-weight: 700;
     color: #1e3a8a;
 }
 
-/* INPUTS */
 .form-control {
     height: 48px;
     border-radius: 12px;
@@ -54,15 +48,11 @@ body {
 
 .form-control:focus {
     border-color: #2563eb;
-    box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.2);
+    box-shadow: 0 0 0 0.2rem rgba(37,99,235,0.2);
 }
 
-/* BOTON PASSWORD */
-.btn-password {
-    border-radius: 0 12px 12px 0 !important;
-}
+.btn-password { border-radius: 0 12px 12px 0 !important; }
 
-/* BOTON LOGIN */
 .btn-login {
     height: 48px;
     border-radius: 12px;
@@ -76,18 +66,28 @@ body {
 
 .btn-login:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 18px rgba(37, 99, 235, 0.35);
+    box-shadow: 0 10px 18px rgba(37,99,235,0.35);
 }
 
-/* ANIMACION */
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(25px);
-    }
+    from { opacity: 0; transform: translateY(25px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
 
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+/* =========================
+   📱 RESPONSIVE
+========================= */
+@media (max-width: 480px) {
+
+    body { padding: 15px; align-items: flex-start; padding-top: 30px; }
+
+    .logo-login { width: 120px; height: 120px; }
+
+    .login-card { padding: 20px; border-radius: 16px; }
+
+    .login-title { font-size: 20px; }
+
+    .form-control { height: 44px; font-size: 14px; }
+
+    .btn-login { height: 44px; font-size: 15px; }
 }

@@ -227,7 +227,6 @@ window.onload = async function () {
 
   cargarSelector();
   generarFormulario();
- 
   cargarTiposMatrimonio();
 
   hojaActual = Object.keys(datosPorHoja)[0];
@@ -236,6 +235,13 @@ window.onload = async function () {
   setTimeout(() => {
     mostrarSeccion('formulario');
   }, 300);
+
+  // 🔥 activar drag
+  const botones = document.querySelector(".botones-flotantes");
+  if (botones) {
+    botones.style.cursor = "grab";
+    hacerArrastrable(botones);
+  }
 };
 
 function esCampoOrden(nombre) {
@@ -1294,7 +1300,44 @@ function generarDashboard() {
           )
         }]
       },
-      options: { responsive: true }
+      options: {
+        responsive: true,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const valor = context.parsed.y;
+                const porcentaje = ((valor / total) * 100).toFixed(1);
+                return ` ${valor} (${porcentaje}%)`;
+              }
+            }
+          },
+          datalabels: {
+            display: false  // no usar datalabels en barras, usamos el plugin nativo
+          }
+        }
+      },
+      plugins: [{
+        id: 'porcentajeBarras',
+        afterDatasetsDraw(chart) {
+          const { ctx, data } = chart;
+          const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+
+          chart.getDatasetMeta(0).data.forEach((bar, i) => {
+            const valor = data.datasets[0].data[i];
+            const porcentaje = ((valor / total) * 100).toFixed(1) + "%";
+
+            ctx.save();
+            ctx.font = "bold 13px Segoe UI";
+            ctx.fillStyle = "#1e293b";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "bottom";
+            ctx.fillText(porcentaje, bar.x, bar.y - 4);
+            ctx.restore();
+          });
+        }
+      }]
     });
   }
 
@@ -1311,7 +1354,50 @@ function generarDashboard() {
           )
         }]
       },
-      options: { responsive: true }
+      options: {
+        responsive: true,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const valor = context.parsed;
+                const porcentaje = ((valor / total) * 100).toFixed(1);
+                return ` ${context.label}: ${valor} (${porcentaje}%)`;
+              }
+            }
+          },
+          legend: {
+            position: 'bottom'
+          }
+        }
+      },
+      plugins: [{
+        id: 'porcentajePie',
+        afterDatasetsDraw(chart) {
+          const { ctx, data } = chart;
+          const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+          const meta = chart.getDatasetMeta(0);
+
+          meta.data.forEach((arc, i) => {
+            const valor = data.datasets[0].data[i];
+            const porcentaje = ((valor / total) * 100).toFixed(1) + "%";
+
+            const angle = (arc.startAngle + arc.endAngle) / 2;
+            const radius = (arc.innerRadius + arc.outerRadius) / 2;
+            const x = arc.x + Math.cos(angle) * radius;
+            const y = arc.y + Math.sin(angle) * radius;
+
+            ctx.save();
+            ctx.font = "bold 13px Segoe UI";
+            ctx.fillStyle = "#ffffff";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(porcentaje, x, y);
+            ctx.restore();
+          });
+        }
+      }]
     });
   }
 }
@@ -1514,4 +1600,51 @@ function mostrarToast(mensaje, tipo = "success") {
       toast.remove();
     }, 400);
   }, 3000);
+}
+
+function controlarBotonesFlotantes(seccion) {
+  const botones = document.querySelector(".botones-flotantes");
+  if (!botones) return;
+
+  if (seccion === "tabla") {
+    botones.style.display = "flex";
+  } else {
+    botones.style.display = "none";
+  }
+}
+function hacerArrastrable(el) {
+
+  let offsetX = 0;
+  let offsetY = 0;
+  let moviendo = false;
+
+  el.addEventListener("mousedown", (e) => {
+    moviendo = true;
+    offsetX = e.clientX - el.offsetLeft;
+    offsetY = e.clientY - el.offsetTop;
+    el.style.cursor = "grabbing";
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!moviendo) return;
+
+    el.style.left = (e.clientX - offsetX) + "px";
+    el.style.top = (e.clientY - offsetY) + "px";
+  });
+
+  document.addEventListener("mouseup", () => {
+    moviendo = false;
+    el.style.cursor = "grab";
+  });
+}
+function mostrarSeccion(seccion) {
+
+  document.querySelectorAll(".seccion").forEach(s => {
+    s.classList.remove("activa");
+  });
+
+  document.getElementById(seccion).classList.add("activa");
+
+  // 🔥 CONTROLAR BOTONES
+  controlarBotonesFlotantes(seccion);
 }

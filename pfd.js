@@ -231,7 +231,7 @@ function generarPDFSeleccionado() {
   pdf.autoTable({
     head: [
       [{
-        content: "Base de datos de contrayentes para la emisión de certificado médico prenupcial MPT - 2026",
+        content: "Base de datos de atención a contrayentes para la emisión de certificado médico prenupcial - 2026",
         colSpan: headersFormateados.length,
         styles: {
           halign: "center", fillColor: [180, 180, 180],
@@ -289,7 +289,7 @@ function generarPDFSeleccionado() {
       // ───────────── MARCA DE AGUA IZQUIERDA ─────────────
       pdf.setFontSize(9);
       pdf.setTextColor(150); // gris suave
-      pdf.text("SUBGERENCIA DE SALUD", 14, pageHeight - 10);
+      pdf.text("SUBGERENCIA DE SALUD - OBSTETRICIA", 14, pageHeight - 10);
 
       // ───────────── NUMERO DE PAGINA CENTRO ─────────────
       const pageNumber = pdf.internal.getNumberOfPages();
@@ -305,7 +305,7 @@ function generarPDFSeleccionado() {
     theme: "grid"
   });
 
-  pdf.save("Base de datos de contrayentes para la emisión de certificado médico prenupcial MPT - 2026.pdf");
+  pdf.save("Base de datos de atención de contrayentes para la emisión de certificado médico prenupcial - 2026.pdf");
 }
 function exportarDashboardPDF() {
 
@@ -386,7 +386,7 @@ function exportarDashboardPDF() {
 
   pdf.setTextColor(255, 255, 255);
   pdf.setFontSize(16);
-  pdf.text("Frecuencia de contrayentes por tipo de matrimonio – MPT 2026", 14, 12);
+  pdf.text("Frecuencia de atención a contrayentes por tipo de matrimonio – 2026", 14, 12);
 
   pdf.setFontSize(10);
   pdf.text(`Fecha: ${new Date().toLocaleDateString()}`, pageWidth - 50, 12);
