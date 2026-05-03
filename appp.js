@@ -536,14 +536,27 @@ function soloFecha(valor) {
 
   let v = valor.toString().trim();
 
-  // 🔥 Si ya viene como DD/MM/YYYY → devolver tal cual
+  // 🔥 Si viene con "/" → detectar si es MM/DD/YY (Sheets) o DD/MM/YYYY (peruano)
   if (v.includes("/")) {
     let partes = v.split("/");
     if (partes.length === 3) {
-      let d = partes[0].padStart(2, "0");
-      let m = partes[1].padStart(2, "0");
-      let a = partes[2];
-      return `${d}/${m}/${a}`; // DD/MM/YYYY sin invertir
+      let p0 = partes[0].trim();
+      let p1 = partes[1].trim();
+      let p2 = partes[2].trim();
+
+      // Si el año tiene 2 dígitos → completar a 4
+      if (p2.length === 2) p2 = "20" + p2;
+
+      let posibleMes = parseInt(p0);
+      let posibleDia = parseInt(p1);
+
+      // Si p1 > 12, no puede ser MM → es MM/DD/YYYY de Sheets → convertir a DD/MM/YYYY
+      if (posibleMes <= 12 && posibleDia > 12) {
+        return `${p1.padStart(2, "0")}/${p0.padStart(2, "0")}/${p2}`;
+      }
+
+      // Si ambos ≤ 12, asumir formato peruano DD/MM/YYYY → dejar igual
+      return `${p0.padStart(2, "0")}/${p1.padStart(2, "0")}/${p2}`;
     }
   }
 

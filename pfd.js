@@ -448,7 +448,7 @@ function exportarDashboardPDF() {
   // ── Footer ────────────────────────────────────────────────────
   pdf.setFontSize(9);
   pdf.setTextColor(120);
-  pdf.text("Reporte generado automáticamente", 14, pdf.internal.pageSize.getHeight() - 5);
+  pdf.text("SUBGERENCIA DE SALUD - OBSTETRICIA", 14, pdf.internal.pageSize.getHeight() - 5);
 
   pdf.save("Frecuencia de contrayentes por tipo de matrimonio – MPT 2026.pdf");
 }
