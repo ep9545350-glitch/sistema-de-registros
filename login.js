@@ -37,7 +37,7 @@ window.login = async function () {
         localStorage.setItem("usuarioLogueado", correo);
 
         // 🔥 redirigir
-        window.location.href = "index.html";
+        window.location.replace("index.html");
 
     } catch (error) {
         console.error(error);
