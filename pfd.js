@@ -155,9 +155,21 @@ function generarPDFSeleccionado() {
           valor = normalizarTipoMatrimonio(valor);
         }
 
+        // 🔥 NUEVO: convertir fechas YYYY-MM-DD → DD/MM/YYYY
+        if (
+          h.toLowerCase().includes("fecha") ||
+          h.toLowerCase().includes("f.") ||
+          h.toLowerCase().includes("consejeria") ||
+          h.toLowerCase().includes("laboratorio") ||
+          h.toLowerCase().includes("consulta") ||
+          h.toLowerCase().includes("recibo")
+        ) {
+          valor = soloFecha(valor);
+        }
+
         if (typeof valor === "string") valor = valor.trim();
 
-        // 🔥 Solo sobrescribir si el campo está vacío (no pisar datos ya escritos)
+        // Solo sobrescribir si el campo está vacío
         if (!filaObj[h] || filaObj[h].toString().trim() === "") {
           filaObj[h] = valor;
         }
