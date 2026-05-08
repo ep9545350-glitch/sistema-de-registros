@@ -1,34 +1,46 @@
 function activarScrollSuperior() {
 
-  const scrollsTop = document.querySelectorAll(".scroll-superior");
-  const tablas = document.querySelectorAll(".tabla-scroll");
-  const barras = document.querySelectorAll(".scroll-bar");
+  // 🔥 Buscar por contenedor padre para que cada tabla
+  // encuentre su propio scroll superior
+  const contenedores = document.querySelectorAll(".mb-5");
 
-  scrollsTop.forEach((scrollTop, index) => {
+  contenedores.forEach(contenedor => {
 
-    const tabla = tablas[index];
-    const barra = barras[index];
+    const scrollTop = contenedor.querySelector(".scroll-superior");
+    const tabla = contenedor.querySelector(".tabla-scroll");
+    const barra = contenedor.querySelector(".scroll-bar");
 
     if (!scrollTop || !tabla || !barra) return;
 
     const tablaInterna = tabla.querySelector("table");
     if (!tablaInterna) return;
 
-    // 🔥 AJUSTAR ANCHO
-    barra.style.width = tablaInterna.scrollWidth + "px";
+    // 🔥 Ajustar ancho de la barra al ancho real de la tabla
+    function actualizarAnchoBarra() {
+      barra.style.width = tablaInterna.scrollWidth + "px";
+    }
+    actualizarAnchoBarra();
 
-    // 🔥 EVITAR EVENTOS DUPLICADOS
-    scrollTop.onscroll = null;
-    tabla.onscroll = null;
+    // 🔥 Re-ajustar si la tabla cambia de tamaño
+    const observer = new ResizeObserver(() => actualizarAnchoBarra());
+    observer.observe(tablaInterna);
 
-    // 🔥 SINCRONIZAR
-    scrollTop.addEventListener("scroll", () => {
-      tabla.scrollLeft = scrollTop.scrollLeft;
+    // 🔥 Limpiar eventos anteriores clonando el nodo scroll superior
+    const nuevoScrollTop = scrollTop.cloneNode(true);
+    scrollTop.parentNode.replaceChild(nuevoScrollTop, scrollTop);
+
+    // 🔥 Re-obtener la barra del nodo clonado
+    const nuevaBarra = nuevoScrollTop.querySelector(".scroll-bar");
+    if (nuevaBarra) nuevaBarra.style.width = tablaInterna.scrollWidth + "px";
+
+    // 🔥 Sincronizar: barra superior → tabla (scroll horizontal)
+    nuevoScrollTop.addEventListener("scroll", () => {
+      tabla.scrollLeft = nuevoScrollTop.scrollLeft;
     });
 
+    // 🔥 Sincronizar: tabla → barra superior (scroll horizontal)
     tabla.addEventListener("scroll", () => {
-      scrollTop.scrollLeft = tabla.scrollLeft;
+      nuevoScrollTop.scrollLeft = tabla.scrollLeft;
     });
-
   });
 }

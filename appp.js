@@ -124,8 +124,25 @@ function editarFila() {
   let celdas = filaSeleccionada.querySelectorAll("td");
 
   celdas.forEach(td => {
-    let texto = td.innerText;
-    td.innerHTML = `<input type="text" value="${texto}" class="form-control form-control-sm">`;
+    let texto = td.innerText.trim();
+    td.style.padding = "2px";
+    td.style.verticalAlign = "middle";
+    td.innerHTML = `
+      <input 
+        type="text" 
+        value="${texto}" 
+        class="form-control form-control-sm"
+        style="
+          border-radius: 0 !important;
+          min-width: 80px;
+          width: 100%;
+          box-sizing: border-box;
+          margin: 0;
+          padding: 3px 6px;
+          height: auto;
+        "
+      >
+    `;
   });
 
   mostrarToast("Editando en tabla ✏️");
@@ -389,26 +406,29 @@ function mostrarTodasLasTablas() {
       });
     });
 
+    // En mostrarTodasLasTablas() — reemplaza el bloque let html = `...`
     let html = `
-      <div class="mb-5">
-        <h3 class="bg-dark text-white p-2 rounded">
-          ${hoja}
-        </h3>
+  <div class="mb-5">
 
-        <div class="scroll-superior">
-          <div class="scroll-bar"></div>
-        </div>
+    <div class="tabla-header-sticky">
+      <h3 class="bg-dark text-white p-2 rounded mb-0">
+        ${hoja}
+      </h3>
+      <div class="scroll-superior">
+        <div class="scroll-bar"></div>
+      </div>
+    </div>
 
-        <div class="tabla-scroll">
-          <table class="table table-bordered table-striped">
-            <thead class="table-dark">
-              <tr>
-                ${headersVisibles.map(h => `<th>${h}</th>`).join("")}
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-    `;
+    <div class="tabla-scroll">
+      <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+          <tr>
+            ${headersVisibles.map(h => `<th>${h}</th>`).join("")}
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+`;
 
     dataFiltradaLocal.forEach((row) => {
       let indexReal = datosPorHoja[hoja].findIndex(r => r === row);
@@ -1456,24 +1476,26 @@ function mostrarSoloHoja(hoja) {
     });
   });
 
+  // En mostrarSoloHoja() — reemplaza el bloque let html = `...`
   let html = `
-    <div class="mb-5">
-      <h3 class="bg-dark text-white p-2 rounded">${hoja}</h3>
+  <div class="mb-5">
 
-      <!-- 🔥 SCROLL SUPERIOR (AQUÍ ESTABA EL ERROR) -->
+    <div class="tabla-header-sticky">
+      <h3 class="bg-dark text-white p-2 rounded mb-0">${hoja}</h3>
       <div class="scroll-superior">
         <div class="scroll-bar"></div>
       </div>
+    </div>
 
-      <div class="tabla-scroll">
-        <table class="table table-bordered table-striped">
-          <thead class="table-dark">
-            <tr>
-              ${headersVisibles.map(h => `<th>${h}</th>`).join("")}
-            </tr>
-          </thead>
-          <tbody>
-  `;
+    <div class="tabla-scroll">
+      <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+          <tr>
+            ${headersVisibles.map(h => `<th>${h}</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+`;
 
   data.forEach((row, index) => {
     html += `<tr onclick="seleccionarFila(this, '${hoja}', ${index})">`;

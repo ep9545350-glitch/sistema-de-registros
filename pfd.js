@@ -37,12 +37,23 @@ function generarPDFSeleccionado() {
   }
 
   // ── Función para normalizar nombre como clave de unión ────────
-  function claveNombre(row) {
+  // ── Función para normalizar nombre como clave de unión ────────
+  // 🔥 AHORA incluye el N° de orden para permitir nombres duplicados
+  function claveNombre(row, index) {
     const campoNombre = Object.keys(row).find(k =>
       k.toLowerCase().includes("nombre") || k.toLowerCase().includes("apellido")
     );
     if (!campoNombre) return null;
-    return (row[campoNombre] || "").toString().trim().toUpperCase();
+
+    const nombre = (row[campoNombre] || "").toString().trim().toUpperCase();
+    if (!nombre) return null;
+
+    // 🔥 Buscar N° de orden en el registro
+    const campoOrdenKey = Object.keys(row).find(k => esCampoOrden(k));
+    const orden = campoOrdenKey ? String(row[campoOrdenKey] || "").trim() : "";
+
+    // 🔥 Clave = nombre + orden (si tiene orden) o nombre + índice (fallback)
+    return orden ? `${nombre}__${orden}` : `${nombre}__idx${index}`;
   }
 
   // ── PASO 1: Filtrar REPORTE DIARIO con todos los filtros activos
@@ -98,31 +109,38 @@ function generarPDFSeleccionado() {
     datosFiltradosPorHoja[hoja] = dataFiltrada;
   }
 
-  // ── PASO 2: Si hay REPORTE DIARIO, obtener los nombres que pasaron el filtro
-  // y usarlos para filtrar las demás hojas (unión por nombre)
-  // ─────────────────────────────────────────────────────────────
+  // ── PASO 2 actualizado ────────────────────────────────────────
+  // 🔥 Para comparar nombres en otras hojas, usar solo la parte
+  // del nombre (antes del "__") sin el N° de orden
   const nombresDeReporte = new Set();
   const hayReporte = datosFiltradosPorHoja["REPORTE DIARIO"];
 
   if (hayReporte && hayReporte.length > 0) {
-    hayReporte.forEach(row => {
-      let clave = claveNombre(row);
-      if (clave) nombresDeReporte.add(clave);
+    hayReporte.forEach((row, index) => {
+      // 🔥 extraer solo el nombre puro para el Set de comparación
+      const campoNombre = Object.keys(row).find(k =>
+        k.toLowerCase().includes("nombre") || k.toLowerCase().includes("apellido")
+      );
+      if (campoNombre) {
+        let nombre = (row[campoNombre] || "").toString().trim().toUpperCase();
+        if (nombre) nombresDeReporte.add(nombre);
+      }
     });
 
-    // 🔥 Filtrar otras hojas para que solo incluyan nombres que están en REPORTE DIARIO
     for (let hoja in datosFiltradosPorHoja) {
       if (hoja === "REPORTE DIARIO") continue;
       datosFiltradosPorHoja[hoja] = datosFiltradosPorHoja[hoja].filter(row => {
-        let clave = claveNombre(row);
-        return clave && nombresDeReporte.has(clave);
+        const campoNombre = Object.keys(row).find(k =>
+          k.toLowerCase().includes("nombre") || k.toLowerCase().includes("apellido")
+        );
+        if (!campoNombre) return false;
+        let nombre = (row[campoNombre] || "").toString().trim().toUpperCase();
+        return nombre && nombresDeReporte.has(nombre);
       });
     }
   }
 
   // ── PASO 3: Unir todas las hojas en un mapa por nombre ────────
-  // Cada nombre = una sola fila con datos de todas las hojas
-  // ─────────────────────────────────────────────────────────────
   const mapaFilas = new Map();
 
   for (let hoja in datosFiltradosPorHoja) {
@@ -133,7 +151,8 @@ function generarPDFSeleccionado() {
     if (!dataFiltrada || dataFiltrada.length === 0) continue;
 
     dataFiltrada.forEach((row, index) => {
-      let clave = claveNombre(row) || (hoja + "_" + index);
+      // 🔥 clave ahora incluye N° de orden → nombres duplicados coexisten
+      let clave = claveNombre(row, index) || (hoja + "_" + index);
 
       if (!mapaFilas.has(clave)) {
         mapaFilas.set(clave, {});
@@ -155,7 +174,6 @@ function generarPDFSeleccionado() {
           valor = normalizarTipoMatrimonio(valor);
         }
 
-        // 🔥 NUEVO: convertir fechas YYYY-MM-DD → DD/MM/YYYY
         if (
           h.toLowerCase().includes("fecha") ||
           h.toLowerCase().includes("f.") ||
@@ -169,14 +187,12 @@ function generarPDFSeleccionado() {
 
         if (typeof valor === "string") valor = valor.trim();
 
-        // Solo sobrescribir si el campo está vacío
         if (!filaObj[h] || filaObj[h].toString().trim() === "") {
           filaObj[h] = valor;
         }
       });
     });
   }
-
   // ── PASO 4: Construir array de filas ──────────────────────────
   let filasCombinadas = [];
   mapaFilas.forEach(obj => {

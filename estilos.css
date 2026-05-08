@@ -393,33 +393,19 @@ thead {
 }
 
 /* ========================= CONTENEDOR TABLA ========================= */
+/* ========================= CONTENEDOR TABLA ========================= */
 #contenedorTabla {
     background: white;
     border-radius: 15px;
     padding: 10px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-    overflow-x: auto;
+    /* 🔥 SIN overflow-x aquí — lo maneja .tabla-scroll */
 }
 
 #contenedorTabla table {
     border-collapse: collapse;
     width: 100%;
     background: white;
-}
-
-#contenedorTabla thead {
-    background: linear-gradient(135deg, #0d6efd, #6f42c1);
-}
-
-#contenedorTabla th {
-    color: white;
-    font-size: 13px;
-    padding: 10px;
-    text-align: left;
-    border: 1px solid #dee2e6;
-    position: sticky;
-    top: 0;
-    z-index: 2;
 }
 
 #contenedorTabla td {
@@ -437,42 +423,126 @@ thead {
     transition: 0.2s;
 }
 
-/* ========================= PAGINACIÓN ========================= */
-#paginacion {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 10px;
-}
-
-#paginacion .btn {
-    border-radius: 8px;
-    padding: 6px 12px;
-    background: #e5e7eb;
-    border: none;
-}
-
-#paginacion .btn:hover {
-    background: #0d6efd;
-    color: white;
-}
-
-/* ========================= SCROLL ========================= */
+/* ========================= SCROLL SUPERIOR ========================= */
+/* ========================= SCROLL SUPERIOR ========================= */
 .scroll-superior {
     overflow-x: auto;
     overflow-y: hidden;
-    height: 15px;
+    height: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
 }
 
 .scroll-bar {
     height: 1px;
 }
 
+/* ========================= TABLA SCROLL ========================= */
 .tabla-scroll {
     overflow-x: auto;
+    overflow-y: auto;
+    /* 🔥 CLAVE: altura fija para que el scroll vertical 
+       ocurra DENTRO de este div, no en la página */
+    max-height: 60vh;
+    position: relative;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 8px 8px;
+}
+
+/* 🔥 thead sticky DENTRO del scroll de .tabla-scroll */
+.tabla-scroll thead {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+}
+
+.tabla-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    /* 🔥 fondo sólido obligatorio — sin esto se ve transparente */
+    background: #212529 !important;
+    color: white !important;
+    font-size: 13px;
+    padding: 10px;
+    text-align: left;
+    border: 1px solid #4a4a4a;
+    /* 🔥 box-shadow simula borde inferior visible al scrollear */
+    box-shadow: 0 2px 0 #4a4a4a;
+}
+
+/* ========================= TABLA HEADER STICKY ========================= */
+/* Agrupa h3 + scroll-superior y los pega arriba al scrollear la PÁGINA */
+.tabla-header-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 25;
+    background: #f4f6f9;
+    /* 🔥 sombra para separar visualmente del contenido */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tabla-header-sticky h3 {
+    margin-bottom: 0 !important;
+    border-radius: 8px 8px 0 0 !important;
+}
+
+/* ========================= CONTENEDOR TABLA ========================= */
+#contenedorTabla {
     background: white;
-    border-radius: 10px;
+    border-radius: 15px;
+    padding: 10px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+#contenedorTabla table {
+    border-collapse: collapse;
+    width: 100%;
+    background: white;
+}
+
+#contenedorTabla td {
+    padding: 10px;
+    font-size: 13px;
+    border: 1px solid #e5e7eb;
+}
+
+#contenedorTabla tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+#contenedorTabla tbody tr:hover {
+    background: #f1f5ff;
+    transition: 0.2s;
+}
+
+/* 🔥 Quitar el sticky viejo de #contenedorTabla th 
+   que entraba en conflicto */
+#contenedorTabla th {
+    font-size: 13px;
+    padding: 10px;
+    border: 1px solid #dee2e6;
+}
+
+/* 🔥 Para el título h3 encima de cada tabla (REPORTE DIARIO, etc.)
+   también sticky para que no desaparezca */
+.mb-5>h3 {
+    position: sticky;
+    top: 0;
+    z-index: 25;
+    margin-bottom: 0 !important;
+}
+
+/* 🔥 Wrapper que agrupa h3 + scroll-superior para que
+   ambos se queden pegados juntos al scrollear */
+.tabla-header-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 25;
+    background: #f4f6f9;
 }
 
 /* ========================= TOAST ========================= */
