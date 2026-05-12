@@ -36,144 +36,129 @@ function generarPDFSeleccionado() {
     return;
   }
 
-  // ── Función para normalizar nombre como clave de unión ────────
-  // ── Función para normalizar nombre como clave de unión ────────
-  // 🔥 AHORA incluye el N° de orden para permitir nombres duplicados
-  function claveNombre(row, index) {
-    const campoNombre = Object.keys(row).find(k =>
-      k.toLowerCase().includes("nombre") || k.toLowerCase().includes("apellido")
-    );
-    if (!campoNombre) return null;
-
-    const nombre = (row[campoNombre] || "").toString().trim().toUpperCase();
-    if (!nombre) return null;
-
-    // 🔥 Buscar N° de orden en el registro
-    const campoOrdenKey = Object.keys(row).find(k => esCampoOrden(k));
-    const orden = campoOrdenKey ? String(row[campoOrdenKey] || "").trim() : "";
-
-    // 🔥 Clave = nombre + orden (si tiene orden) o nombre + índice (fallback)
-    return orden ? `${nombre}__${orden}` : `${nombre}__idx${index}`;
-  }
-
-  // ── PASO 1: Filtrar REPORTE DIARIO con todos los filtros activos
-  // Las demás hojas se filtran SOLO por nombre/DNI (no por tipo matrimonio ni fecha)
-  // ─────────────────────────────────────────────────────────────
+  // ── PASO 1: Filtrar datos por hoja ────────────────────────────
+  // 🔥 REPORTE DIARIO → filtrar con todos los filtros activos
+  // 🔥 OTRAS HOJAS    → filtrar por los N° de orden que salieron de REPORTE DIARIO
   const datosFiltradosPorHoja = {};
 
+  // Primero filtrar REPORTE DIARIO
+  const hojaRD = "REPORTE DIARIO";
+  if (columnasSeleccionadas[hojaRD] && columnasSeleccionadas[hojaRD].size > 0) {
+    let dataRD = datosPorHoja[hojaRD] || [];
+    datosFiltradosPorHoja[hojaRD] = aplicarFiltroAData(dataRD, hojaRD);
+  } else {
+    // aunque no tenga columnas seleccionadas, necesitamos los N° de orden
+    // para filtrar las demás hojas
+    let dataRD = datosPorHoja[hojaRD] || [];
+    datosFiltradosPorHoja[hojaRD] = aplicarFiltroAData(dataRD, hojaRD);
+  }
+
+  // 🔥 Obtener los N° de orden del REPORTE DIARIO filtrado
+  const headersRD = headersPorHoja[hojaRD] || [];
+  const campoOrdenRD = headersRD.find(h => esCampoOrden(h));
+  const ordenesFiltradas = new Set();
+
+  datosFiltradosPorHoja[hojaRD].forEach(row => {
+    if (campoOrdenRD && row[campoOrdenRD] !== undefined && row[campoOrdenRD] !== "") {
+      ordenesFiltradas.add(String(row[campoOrdenRD]).trim());
+    }
+  });
+
+  // Filtrar las demás hojas por N° de orden
   for (let hoja in columnasSeleccionadas) {
+    if (hoja === hojaRD) continue;
     const cols = columnasSeleccionadas[hoja];
     if (!cols || cols.size === 0) continue;
 
-    let data = datosPorHoja[hoja];
-    if (!data || data.length === 0) continue;
+    let data = datosPorHoja[hoja] || [];
+    if (!data.length) continue;
 
-    let dataFiltrada;
+    const headersHoja = headersPorHoja[hoja] || [];
+    const campoOrdenHoja = headersHoja.find(h => esCampoOrden(h));
 
-    if (hoja === "REPORTE DIARIO") {
-      // 🔥 Aplicar TODOS los filtros activos
-      dataFiltrada = aplicarFiltroAData(data);
+    if (campoOrdenHoja && ordenesFiltradas.size > 0) {
+      // 🔥 Filtrar por N° de orden que coincida con REPORTE DIARIO
+      datosFiltradosPorHoja[hoja] = data.filter(row => {
+        const orden = String(row[campoOrdenHoja] || "").trim();
+        return ordenesFiltradas.has(orden);
+      });
     } else {
-      // 🔥 Para otras hojas: solo filtrar por nombre y DNI
-      // NO filtrar por tipo matrimonio ni fecha (esos son campos de REPORTE DIARIO)
-      dataFiltrada = data.filter(row => {
-
-        // Filtro nombre
-        if (filtroGlobal.nombre) {
-          let encontrado = Object.values(row).some(v =>
-            v && v.toString().toLowerCase().includes(filtroGlobal.nombre)
-          );
-          if (!encontrado) return false;
-        }
-
-        // Filtro DNI
-        if (filtroGlobal.dni) {
-          const campoDni = Object.keys(row).find(k =>
-            k.toLowerCase().replace(/\s+/g, "").includes("dni") ||
-            k.toLowerCase().replace(/\s+/g, "").includes("ce")
-          );
-          let valorDni = campoDni ? (row[campoDni] || "").toString().toLowerCase() : "";
-          if (!valorDni.includes(filtroGlobal.dni)) return false;
-        }
-
-        return true;
-      });
-    }
-
-    // Quitar filas sin nombre
-    dataFiltrada = dataFiltrada.filter(row => {
-      let clave = claveNombre(row);
-      return clave && clave.trim() !== "";
-    });
-
-    datosFiltradosPorHoja[hoja] = dataFiltrada;
-  }
-
-  // ── PASO 2 actualizado ────────────────────────────────────────
-  // 🔥 Para comparar nombres en otras hojas, usar solo la parte
-  // del nombre (antes del "__") sin el N° de orden
-  const nombresDeReporte = new Set();
-  const hayReporte = datosFiltradosPorHoja["REPORTE DIARIO"];
-
-  if (hayReporte && hayReporte.length > 0) {
-    hayReporte.forEach((row, index) => {
-      // 🔥 extraer solo el nombre puro para el Set de comparación
-      const campoNombre = Object.keys(row).find(k =>
-        k.toLowerCase().includes("nombre") || k.toLowerCase().includes("apellido")
-      );
-      if (campoNombre) {
-        let nombre = (row[campoNombre] || "").toString().trim().toUpperCase();
-        if (nombre) nombresDeReporte.add(nombre);
-      }
-    });
-
-    for (let hoja in datosFiltradosPorHoja) {
-      if (hoja === "REPORTE DIARIO") continue;
-      datosFiltradosPorHoja[hoja] = datosFiltradosPorHoja[hoja].filter(row => {
-        const campoNombre = Object.keys(row).find(k =>
-          k.toLowerCase().includes("nombre") || k.toLowerCase().includes("apellido")
-        );
-        if (!campoNombre) return false;
-        let nombre = (row[campoNombre] || "").toString().trim().toUpperCase();
-        return nombre && nombresDeReporte.has(nombre);
-      });
+      datosFiltradosPorHoja[hoja] = data;
     }
   }
 
-  // ── PASO 3: Unir todas las hojas en un mapa por nombre ────────
-  const mapaFilas = new Map();
+  // ── PASO 2: Unir todas las hojas por N° de orden ─────────────
+  // 🔥 El mapa usa el N° de orden como clave → unión exacta y confiable
+  const mapaFilas = new Map(); // clave: N° de orden (string)
 
-  for (let hoja in datosFiltradosPorHoja) {
-    const cols = columnasSeleccionadas[hoja];
-    if (!cols || cols.size === 0) continue;
+  // Primero insertar todos los registros de REPORTE DIARIO
+  const colsRD = columnasSeleccionadas[hojaRD];
+  if (datosFiltradosPorHoja[hojaRD]) {
+    datosFiltradosPorHoja[hojaRD].forEach((row, index) => {
+      const orden = campoOrdenRD
+        ? String(row[campoOrdenRD] || "").trim()
+        : String(index);
 
-    const dataFiltrada = datosFiltradosPorHoja[hoja];
-    if (!dataFiltrada || dataFiltrada.length === 0) continue;
-
-    dataFiltrada.forEach((row, index) => {
-      // 🔥 clave ahora incluye N° de orden → nombres duplicados coexisten
-      let clave = claveNombre(row, index) || (hoja + "_" + index);
+      const clave = orden || `rd_${index}`;
 
       if (!mapaFilas.has(clave)) {
         mapaFilas.set(clave, {});
       }
 
-      let filaObj = mapaFilas.get(clave);
+      const filaObj = mapaFilas.get(clave);
+
+      // Guardar TODOS los campos del registro (aunque no estén seleccionados),
+      // para que la unión funcione bien
+      if (colsRD && colsRD.size > 0) {
+        colsRD.forEach(h => {
+          let valor = row[h] ?? "";
+
+          if (h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")) {
+            valor = normalizarTipoMatrimonio(valor);
+          }
+          if (
+            h.toLowerCase().includes("fecha") ||
+            h.toLowerCase().includes("f.") ||
+            h.toLowerCase().includes("consejeria") ||
+            h.toLowerCase().includes("laboratorio") ||
+            h.toLowerCase().includes("consulta") ||
+            h.toLowerCase().includes("recibo")
+          ) {
+            valor = soloFecha(valor);
+          }
+          if (typeof valor === "string") valor = valor.trim();
+          filaObj[h] = valor;
+        });
+      }
+    });
+  }
+
+  // Luego agregar datos de las demás hojas al mapa, por N° de orden
+  for (let hoja in columnasSeleccionadas) {
+    if (hoja === hojaRD) continue;
+    const cols = columnasSeleccionadas[hoja];
+    if (!cols || cols.size === 0) continue;
+
+    const dataFiltrada = datosFiltradosPorHoja[hoja] || [];
+    const headersHoja = headersPorHoja[hoja] || [];
+    const campoOrdenHoja = headersHoja.find(h => esCampoOrden(h));
+
+    dataFiltrada.forEach((row, index) => {
+      const orden = campoOrdenHoja
+        ? String(row[campoOrdenHoja] || "").trim()
+        : String(index);
+
+      // 🔥 Solo agregar si ya existe en el mapa (proviene de REPORTE DIARIO filtrado)
+      if (!mapaFilas.has(orden)) return;
+
+      const filaObj = mapaFilas.get(orden);
 
       cols.forEach(h => {
-        let valor;
-
-        if (esCampoOrden(h)) {
-          let v = row[h];
-          valor = (v !== undefined && v !== "") ? v : index + 1;
-        } else {
-          valor = row[h] ?? "";
-        }
+        let valor = row[h] ?? "";
 
         if (h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")) {
           valor = normalizarTipoMatrimonio(valor);
         }
-
         if (
           h.toLowerCase().includes("fecha") ||
           h.toLowerCase().includes("f.") ||
@@ -184,20 +169,28 @@ function generarPDFSeleccionado() {
         ) {
           valor = soloFecha(valor);
         }
-
         if (typeof valor === "string") valor = valor.trim();
 
+        // Solo rellenar si está vacío
         if (!filaObj[h] || filaObj[h].toString().trim() === "") {
           filaObj[h] = valor;
         }
       });
     });
   }
-  // ── PASO 4: Construir array de filas ──────────────────────────
-  let filasCombinadas = [];
-  mapaFilas.forEach(obj => {
-    let fila = headersGlobalesOrdenados.map(h => obj[h] || "");
-    filasCombinadas.push(fila);
+
+  // ── PASO 3: Construir array de filas en orden ─────────────────
+  // 🔥 Ordenar por N° de orden numérico
+  const clavesOrdenadas = [...mapaFilas.keys()].sort((a, b) => {
+    return Number(a) - Number(b);
+  });
+
+  let filasCombinadas = clavesOrdenadas.map(clave => {
+    const obj = mapaFilas.get(clave);
+    return headersGlobalesOrdenados.map(h => {
+      let v = obj[h];
+      return (v !== undefined && v !== null) ? v.toString().toUpperCase() : "";
+    });
   });
 
   if (filasCombinadas.length === 0) {
@@ -250,11 +243,6 @@ function generarPDFSeleccionado() {
     columnStyles[i].cellWidth *= scale;
   });
 
-  const seccionesIncluidas = Object.entries(columnasSeleccionadas)
-    .filter(([, set]) => set.size > 0)
-    .map(([hoja]) => hoja)
-    .join(" + ");
-
   // ── Generar PDF ───────────────────────────────────────────────
   pdf.autoTable({
     head: [
@@ -300,34 +288,22 @@ function generarPDFSeleccionado() {
       }
     },
     didDrawPage: function (data) {
-
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
 
-      // 🔥 LOGO
       const logo = new Image();
       logo.src = "ESCUDO_MPT_2.png";
       pdf.addImage(logo, "PNG", 14, 8, 15, 15);
 
-      // 🔥 TÍTULO
-      pdf.setFontSize(11);
-      pdf.setTextColor(0);
-
-
-      // ───────────── MARCA DE AGUA IZQUIERDA ─────────────
       pdf.setFontSize(9);
-      pdf.setTextColor(150); // gris suave
+      pdf.setTextColor(150);
       pdf.text("SUBGERENCIA DE SALUD - OBSTETRICIA", 14, pageHeight - 10);
 
-      // ───────────── NUMERO DE PAGINA CENTRO ─────────────
       const pageNumber = pdf.internal.getNumberOfPages();
-
       pdf.setFontSize(10);
       pdf.setTextColor(120);
-
       const textoPagina = `Página ${pageNumber}`;
       const textWidth = pdf.getTextWidth(textoPagina);
-
       pdf.text(textoPagina, pageWidth / 2 - textWidth / 2, pageHeight - 10);
     },
     theme: "grid"

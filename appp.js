@@ -239,19 +239,27 @@ async function guardarEdicion() {
 
 window.onload = async function () {
 
+  // 🔥 Mostrar formulario inmediatamente sin esperar la carga
+  mostrarSeccion('formulario');
+
+  // 🔥 Mostrar indicador de carga en el formulario
+  const contenedorForm = document.getElementById("formularioDinamico");
+  contenedorForm.innerHTML = `
+    <div class="col-12 text-center py-4">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted">Cargando datos...</p>
+    </div>
+  `;
+
   await cargarDesdeSheets();
   await cargarDesdeFirebase();
 
   cargarSelector();
-  generarFormulario();
+  generarFormulario();      // 🔥 esto reemplaza el spinner con el form real
   cargarTiposMatrimonio();
 
   hojaActual = Object.keys(datosPorHoja)[0];
   mostrarTodasLasTablas();
-
-  setTimeout(() => {
-    mostrarSeccion('formulario');
-  }, 300);
 
   // 🔥 activar drag
   const botones = document.querySelector(".botones-flotantes");
@@ -371,9 +379,7 @@ function mostrarTodasLasTablas() {
 
     let data = datosPorHoja[hoja];
 
-    let dataFiltradaLocal = modoFiltrado
-      ? aplicarFiltroAData(data)
-      : data;
+    let dataFiltradaLocal = modoFiltrado ? aplicarFiltroAData(data, hoja) : data;
 
     // 🔥 ordenar según si tiene campo de orden numérico o no
     const campoOrden = headersPorHoja[hoja].find(h =>
@@ -890,58 +896,144 @@ function mostrarTablaManual() {
   }, 100);
 }
 
-function aplicarFiltroAData(data) {
+// 🔥 Primero, función que obtiene los N° de orden filtrados de REPORTE DIARIO
+function obtenerOrdenesFiltradasPorFecha() {
+  const data = datosPorHoja["REPORTE DIARIO"] || [];
+  const headers = headersPorHoja["REPORTE DIARIO"] || [];
 
-  let nombre = filtroGlobal.nombre;
-  let dni = filtroGlobal.dni;       // 🔥 NUEVO
-  let desde = filtroGlobal.desde;
-  let hasta = filtroGlobal.hasta;
-  let tipoMatrimonio = filtroGlobal.tipoMatrimonio;
+  const campoOrden = headers.find(h => esCampoOrden(h));
+  const campoFecha = headers.find(k =>
+    k.toLowerCase().includes("fecha") || k.toLowerCase().includes("f.")
+  );
 
-  return data.filter(row => {
+  const desde = filtroGlobal.desde;
+  const hasta = filtroGlobal.hasta;
 
-    if (nombre) {
-      let encontrado = Object.values(row).some(valor =>
-        valor && valor.toString().toLowerCase().includes(nombre)
+  const ordenesFiltradas = new Set();
+
+  data.forEach(row => {
+    // Filtrar por nombre si aplica
+    if (filtroGlobal.nombre) {
+      let encontrado = Object.values(row).some(v =>
+        v && v.toString().toLowerCase().includes(filtroGlobal.nombre)
       );
-      if (!encontrado) return false;
+      if (!encontrado) return;
     }
 
-    // 🔥 FILTRO DNI
-    if (dni) {
+    // Filtrar por DNI si aplica
+    if (filtroGlobal.dni) {
       const campoDni = Object.keys(row).find(k =>
         k.toLowerCase().replace(/\s+/g, "").includes("dni") ||
         k.toLowerCase().replace(/\s+/g, "").includes("ce")
       );
       let valorDni = campoDni ? (row[campoDni] || "").toString().toLowerCase() : "";
-      if (!valorDni.includes(dni)) return false;
+      if (!valorDni.includes(filtroGlobal.dni)) return;
     }
 
-    if (tipoMatrimonio) {
+    // Filtrar por tipo matrimonio si aplica
+    if (filtroGlobal.tipoMatrimonio) {
       const campoTipo = Object.keys(row).find(k =>
         k.toLowerCase().replace(/\s+/g, "").includes("matrimonio")
       );
       let valor = campoTipo ? normalizarTipoMatrimonio(row[campoTipo]) : "";
-      if (valor !== tipoMatrimonio.toUpperCase()) return false;
+      if (valor !== filtroGlobal.tipoMatrimonio.toUpperCase()) return;
     }
 
-    const campoFecha = Object.keys(row).find(k =>
-      k.toLowerCase().includes("fecha")
-    );
-
+    // Filtrar por fecha
     if ((desde || hasta) && campoFecha) {
       let valorFecha = row[campoFecha];
-      if (!valorFecha) return false;
-
-      // 🔥 Usar fechaAISO para convertir DD/MM/YYYY → YYYY-MM-DD
+      if (!valorFecha) return;
       let fechaISO = fechaAISO(valorFecha.toString().trim());
-      if (!fechaISO) return false;
-
-      if (desde && fechaISO < desde) return false;
-      if (hasta && fechaISO > hasta) return false;
+      if (!fechaISO) return;
+      if (desde && fechaISO < desde) return;
+      if (hasta && fechaISO > hasta) return;
     }
 
-    return true;
+    // Si pasó todos los filtros, guardar su N° de orden
+    if (campoOrden && row[campoOrden] !== undefined && row[campoOrden] !== "") {
+      ordenesFiltradas.add(String(row[campoOrden]).trim());
+    }
+  });
+
+  return ordenesFiltradas;
+}
+
+// 🔥 Reemplaza tu aplicarFiltroAData existente con esta versión
+function aplicarFiltroAData(data, hoja) {
+
+  const esReporteDiario = hoja === "REPORTE DIARIO";
+
+  // ── REPORTE DIARIO: filtrar por todos los campos normalmente ──
+  if (esReporteDiario) {
+    let nombre = filtroGlobal.nombre;
+    let dni = filtroGlobal.dni;
+    let desde = filtroGlobal.desde;
+    let hasta = filtroGlobal.hasta;
+    let tipoMatrimonio = filtroGlobal.tipoMatrimonio;
+
+    return data.filter(row => {
+      if (nombre) {
+        let encontrado = Object.values(row).some(valor =>
+          valor && valor.toString().toLowerCase().includes(nombre)
+        );
+        if (!encontrado) return false;
+      }
+
+      if (dni) {
+        const campoDni = Object.keys(row).find(k =>
+          k.toLowerCase().replace(/\s+/g, "").includes("dni") ||
+          k.toLowerCase().replace(/\s+/g, "").includes("ce")
+        );
+        let valorDni = campoDni ? (row[campoDni] || "").toString().toLowerCase() : "";
+        if (!valorDni.includes(dni)) return false;
+      }
+
+      if (tipoMatrimonio) {
+        const campoTipo = Object.keys(row).find(k =>
+          k.toLowerCase().replace(/\s+/g, "").includes("matrimonio")
+        );
+        let valor = campoTipo ? normalizarTipoMatrimonio(row[campoTipo]) : "";
+        if (valor !== tipoMatrimonio.toUpperCase()) return false;
+      }
+
+      const campoFecha = Object.keys(row).find(k =>
+        k.toLowerCase().includes("fecha")
+      );
+
+      if ((desde || hasta) && campoFecha) {
+        let valorFecha = row[campoFecha];
+        if (!valorFecha) return false;
+        let fechaISO = fechaAISO(valorFecha.toString().trim());
+        if (!fechaISO) return false;
+        if (desde && fechaISO < desde) return false;
+        if (hasta && fechaISO > hasta) return false;
+      }
+
+      return true;
+    });
+  }
+
+  // ── OTRAS TABLAS: filtrar por N° de orden que coincida con REPORTE DIARIO ──
+  const ordenesFiltradas = obtenerOrdenesFiltradasPorFecha();
+
+  // Si no hay filtros activos de fecha/nombre/dni, mostrar todo
+  const hayFiltroActivo =
+    filtroGlobal.nombre ||
+    filtroGlobal.dni ||
+    filtroGlobal.desde ||
+    filtroGlobal.hasta ||
+    filtroGlobal.tipoMatrimonio;
+
+  if (!hayFiltroActivo) return data;
+
+  const headers = headersPorHoja[hoja] || [];
+  const campoOrden = headers.find(h => esCampoOrden(h));
+
+  if (!campoOrden || ordenesFiltradas.size === 0) return [];
+
+  return data.filter(row => {
+    const orden = String(row[campoOrden] || "").trim();
+    return ordenesFiltradas.has(orden);
   });
 }
 
@@ -1461,9 +1553,8 @@ function mostrarSoloHoja(hoja) {
   const contenedor = document.getElementById("contenedorTabla");
   contenedor.innerHTML = "";
 
-  let data = modoFiltrado
-    ? aplicarFiltroAData(datosPorHoja[hoja])
-    : datosPorHoja[hoja];
+  let data = modoFiltrado ? aplicarFiltroAData(datosPorHoja[hoja], hoja) : datosPorHoja[hoja];
+
 
   if (!data) return;
 
