@@ -1695,7 +1695,7 @@ function detectarCamposCompartidos() {
 }
 
 async function cargarDesdeFirebase() {
-  
+
 
   const COLECCIONES = {
     "REPORTE DIARIO": "reporte_diario",
@@ -1808,14 +1808,75 @@ function hacerArrastrable(el) {
     el.style.cursor = "grab";
   });
 }
-function mostrarSeccion(seccion) {
+function mostrarSeccion(id) {
+  document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa'));
+  document.getElementById(id).classList.add('activa');
+  controlarBotonesFlotantes(id);
 
-  document.querySelectorAll(".seccion").forEach(s => {
-    s.classList.remove("activa");
-  });
+  // 🔥 Marca el botón activo
+  document.querySelectorAll('.sidebar button:not(.btn-cerrar)').forEach(b => b.classList.remove('active'));
+  const btn = [...document.querySelectorAll('.sidebar button')].find(b => b.onclick?.toString().includes(id));
+  if (btn) btn.classList.add('active');
 
-  document.getElementById(seccion).classList.add("activa");
-
-  // 🔥 CONTROLAR BOTONES
-  controlarBotonesFlotantes(seccion);
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.remove('activa');
+    document.getElementById('sidebarOverlay').classList.remove('activa');
+  }
 }
+
+// ========================= ESTRELLAS SIDEBAR =========================
+(function() {
+    const canvas = document.getElementById("starCanvas");
+    if (!canvas) return;
+    const sidebar = canvas.parentElement;
+    const ctx = canvas.getContext("2d");
+
+    function resize() {
+        canvas.width = sidebar.offsetWidth;
+        canvas.height = sidebar.offsetHeight;
+    }
+    resize();
+    window.addEventListener("resize", resize);
+
+    const STAR_COUNT = 90;
+    const stars = Array.from({ length: STAR_COUNT }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 1.4 + 0.3,
+        alpha: Math.random() * 0.6 + 0.15,
+        alphaDir: Math.random() > 0.5 ? 1 : -1,
+        alphaSpeed: Math.random() * 0.004 + 0.001,
+        vx: (Math.random() - 0.5) * 0.25,
+        vy: (Math.random() - 0.5) * 0.08,
+        color: Math.random() > 0.85
+            ? "rgba(129,140,248,"
+            : Math.random() > 0.7
+                ? "rgba(16,185,129,"
+                : "rgba(255,255,255,"
+    }));
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const W = canvas.width, H = canvas.height;
+
+        stars.forEach(s => {
+            s.x += s.vx;
+            s.y += s.vy;
+            if (s.x < 0) s.x = W;
+            if (s.x > W) s.x = 0;
+            if (s.y < 0) s.y = H;
+            if (s.y > H) s.y = 0;
+
+            s.alpha += s.alphaSpeed * s.alphaDir;
+            if (s.alpha > 0.85 || s.alpha < 0.08) s.alphaDir *= -1;
+
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+            ctx.fillStyle = s.color + s.alpha.toFixed(2) + ")";
+            ctx.fill();
+        });
+
+        requestAnimationFrame(draw);
+    }
+    draw();
+})();

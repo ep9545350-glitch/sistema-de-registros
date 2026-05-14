@@ -11,109 +11,226 @@ body {
 }
 
 /* ========================= SIDEBAR ========================= */
+/* ========================= SIDEBAR ========================= */
 .sidebar {
     position: fixed;
     top: 0;
     left: 0;
-    width: 220px;
+    width: 230px;
     height: 100vh;
-    padding: 25px 15px;
-    color: white;
-    background: linear-gradient(180deg, #0f172a, #1e1b4b);
-    box-shadow: 5px 0 30px rgba(0, 0, 0, 0.25);
-    overflow-y: auto;
-    z-index: 1050;
-    transition: left 0.3s ease;
-}
-
-.sidebar h5 {
-    font-weight: 700;
-    font-size: 18px;
-    text-align: center;
-    margin-bottom: 25px;
-    letter-spacing: 1px;
-    color: #ffffff;
-}
-
-.sidebar button {
-    width: 100%;
-    margin-bottom: 10px;
-    padding: 12px 14px;
-    border-radius: 12px;
-    border: none;
-    color: #e5e7eb;
-    font-weight: 500;
-    text-align: left;
-    background: rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(8px);
-    transition: all 0.25s ease;
+    padding: 24px 14px;
+    background: #0a0f1e;
     display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1050;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sidebar button::before {
-    content: "•";
-    color: #60a5fa;
-    font-size: 18px;
-    flex-shrink: 0;
+/* Glow top-left */
+.sidebar::before {
+    content: "";
+    position: absolute;
+    top: -80px;
+    left: -80px;
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, transparent 70%);
+    pointer-events: none;
 }
 
-.sidebar button:hover {
-    background: linear-gradient(90deg, #0d6efd, #6f42c1);
-    color: white;
-    transform: translateX(6px);
-    box-shadow: 0 8px 20px rgba(13, 110, 253, 0.3);
-}
-
-.sidebar button.active {
-    background: linear-gradient(90deg, #22c55e, #16a34a);
-    color: white;
-    box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3);
-}
-
-.btn-cerrar {
-    background: rgba(220, 53, 69, 0.25) !important;
-    color: #ff8a8a !important;
-}
-
-.btn-cerrar:hover {
-    background: rgba(220, 53, 69, 0.6) !important;
-    color: white !important;
-    transform: translateX(6px) !important;
-}
-
+/* Glow bottom-right */
 .sidebar::after {
     content: "";
     position: absolute;
+    bottom: -60px;
+    right: -60px;
+    width: 180px;
+    height: 180px;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+/* Línea lateral degradada */
+.sidebar-line {
+    position: absolute;
     top: 0;
     right: 0;
-    width: 2px;
+    width: 1px;
     height: 100%;
-    background: linear-gradient(180deg, transparent, #3b82f6, transparent);
-    opacity: 0.5;
+    background: linear-gradient(to bottom,
+            transparent,
+            rgba(99, 102, 241, 0.5) 40%,
+            rgba(16, 185, 129, 0.4) 70%,
+            transparent);
 }
 
-.logo-sidebar {
-    width: 140px;
-    max-width: 100%;
-    height: auto;
+/* ========================= LOGO AREA ========================= */
+.logo-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 18px;
+    margin-bottom: 8px;
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.07);
+}
+
+.logo-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: white;
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.3),
+        0 8px 20px rgba(99, 102, 241, 0.25);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.logo-circle:hover {
+    transform: scale(1.08) rotate(-4deg);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5),
+        0 12px 28px rgba(99, 102, 241, 0.35);
+}
+
+.logo-text {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.55);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+/* ========================= LABEL SECCIÓN ========================= */
+.menu-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.25);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 10px 2px;
+    margin-top: 6px;
+}
+
+/* ========================= BOTONES NAV ========================= */
+.sidebar button {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 11px 13px;
     border-radius: 12px;
-    object-fit: contain;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 13.5px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    text-align: left;
+    width: 100%;
 }
 
-/* ========================= OVERLAY ========================= */
-.sidebar-overlay {
-    display: none;
-    position: fixed;
+.sidebar button .icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+}
+
+.sidebar button .btn-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: transparent;
+    flex-shrink: 0;
+    margin-left: auto;
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.sidebar button:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.06);
+    transform: translateX(4px);
+}
+
+.sidebar button:hover .icon {
+    transform: scale(1.15);
+}
+
+.sidebar button:hover .btn-dot {
+    background: #818cf8;
+    box-shadow: 0 0 6px #818cf8;
+}
+
+.sidebar button.active {
+    color: white;
+    background: rgba(99, 102, 241, 0.15);
+    border: 0.5px solid rgba(99, 102, 241, 0.3);
+    transform: translateX(4px);
+}
+
+.sidebar button.active .icon {
+    color: #818cf8;
+    transform: scale(1.1);
+}
+
+.sidebar button.active .btn-dot {
+    background: #818cf8;
+    box-shadow: 0 0 8px 1px rgba(129, 140, 248, 0.7);
+}
+
+/* ========================= CERRAR SESIÓN ========================= */
+.btn-cerrar {
+    color: rgba(241, 55, 55, 0.966) !important;
+    margin-top: auto !important;
+}
+
+.btn-cerrar:hover {
+    color: #f03a3a!important;
+    background: rgba(239, 68, 68, 0.1) !important;
+    border: 0.5px solid rgba(239, 68, 68, 0.2) !important;
+}
+
+.btn-cerrar:hover .btn-dot {
+    background: #f03a3a !important;
+    box-shadow: 0 0 6px #f87171 !important;
+}
+
+/* ========================= VERSIÓN ========================= */
+.sidebar-version {
+    text-align: center;
+    font-size: 10px;
+    color: rgb(193, 188, 188);
+    padding-top: 6px;
+    letter-spacing: 1px;
+}
+
+/* ========================= CANVAS ESTRELLAS ========================= */
+#starCanvas {
+    position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 1040;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
 }
 
-.sidebar-overlay.activa {
-    display: block;
+/* Asegura que el contenido del sidebar quede encima del canvas */
+.sidebar>*:not(#starCanvas):not(.sidebar-line) {
+    position: relative;
+    z-index: 2;
+}
+
+.sidebar-line {
+    z-index: 1;
+    /* ya lo tienes, solo confirmar */
 }
 
 /* ========================= TOGGLE BTN ========================= */
