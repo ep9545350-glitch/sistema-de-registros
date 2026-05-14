@@ -70,6 +70,45 @@ function seleccionarFila(tr, hoja, index) {
   registroSeleccionado = datosPorHoja[hoja][index];
 }
 
+// 🔥 NUEVA FUNCIÓN: renumera localmente y actualiza Firebase
+async function renumerarHoja(hoja) {
+  const campoOrden = headersPorHoja[hoja]?.find(h => esCampoOrden(h));
+  if (!campoOrden) return;
+
+  // Ordenar por el número actual antes de renumerar
+  datosPorHoja[hoja].sort((a, b) =>
+    Number(a[campoOrden] || 0) - Number(b[campoOrden] || 0)
+  );
+
+  let promesas = [];
+
+  datosPorHoja[hoja].forEach((row, i) => {
+    const nuevoNumero = i + 1;
+    const numeroActual = Number(row[campoOrden]);
+
+    // Solo actualizar si el número cambió
+    if (numeroActual !== nuevoNumero) {
+      row[campoOrden] = nuevoNumero; // actualizar local
+
+      // Actualizar en Firebase si tiene _id
+      if (row._id) {
+        const claveFirebase = limpiarClave(campoOrden);
+        const promesa = fb.updateDoc(
+          fb.doc(db, COLECCIONES[hoja], row._id),
+          { [claveFirebase]: nuevoNumero }
+        );
+        promesas.push(promesa);
+      }
+    }
+  });
+
+  if (promesas.length > 0) {
+    await Promise.all(promesas);
+    console.log(`✅ Renumerados ${promesas.length} registros en "${hoja}"`);
+  }
+}
+
+// 🔥 FUNCIÓN CORREGIDA: eliminarFila con renumeración
 async function eliminarFila() {
 
   if (!registroSeleccionado) {
@@ -92,9 +131,14 @@ async function eliminarFila() {
         r => r._id !== registroSeleccionado._id
       );
 
-    mostrarToast("Eliminado correctamente ✅");
+    // 🔥 RENUMERAR todas las hojas después de eliminar
+    mostrarToast("Renumerando registros...", "success");
+    for (let hoja in datosPorHoja) {
+      await renumerarHoja(hoja);
+    }
 
-    // 🔥 guardar referencia antes de limpiar
+    mostrarToast("Eliminado y renumerado correctamente ✅");
+
     const hojaAntes = hojaSeleccionada;
 
     filaSeleccionada = null;
@@ -102,7 +146,6 @@ async function eliminarFila() {
     registroSeleccionado = null;
     hojaSeleccionada = null;
 
-    // 🔥 volver a la misma sección donde estaba el usuario
     if (hojaAntes) {
       mostrarSoloHoja(hojaAntes);
     } else {
@@ -132,6 +175,7 @@ function editarFila() {
         type="text" 
         value="${texto}" 
         class="form-control form-control-sm"
+        oniput="this.value = this.value.toUpperCase()"
         style="
           border-radius: 0 !important;
           min-width: 80px;
@@ -1651,6 +1695,7 @@ function detectarCamposCompartidos() {
 }
 
 async function cargarDesdeFirebase() {
+  
 
   const COLECCIONES = {
     "REPORTE DIARIO": "reporte_diario",
