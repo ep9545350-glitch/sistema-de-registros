@@ -1,79 +1,149 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar Sesión</title>
-
-    <!-- 🔥 Evitar caché del navegador -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="login.css">
-    <link rel="icon" href="LogoEDTEC.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar Sesión</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="login.css">
+  <link rel="icon" href="LogoEDTEC.png">
 </head>
-
 <body>
 
-    <div class="login-container">
+  <div class="bg-scene">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+  </div>
+  <div class="bg-grid"></div>
+  <div class="particles" id="particles"></div>
 
-        <!-- LOGO -->
-        <div class="mb-4 text-center">
-            <img src="LogoEDTEC.png" alt="Logo" class="logo-login">
-        </div>
+  <div class="login-wrap">
 
-        <!-- CARD -->
-        <div class="card login-card shadow-lg">
-
-            <h3 class="text-center login-title mb-1">Bienvenido</h3>
-            <p class="text-center text-muted mb-4">Inicia sesión para continuar</p>
-
-            <input type="email" id="correo" class="form-control mb-3" placeholder="Correo electrónico">
-
-            <div class="input-group mb-3">
-                <input type="password" id="password" class="form-control" placeholder="Contraseña">
-                <button class="btn btn-outline-secondary btn-password" type="button" onclick="togglePassword()">
-                    <i id="iconoPassword" class="bi bi-eye"></i>
-                </button>
-            </div>
-
-            <button class="btn btn-login w-100" onclick="login()">
-                Ingresar
-            </button>
-
-            <div id="error" class="text-danger mt-3 text-center small fw-semibold" style="display:none;"></div>
-
-
-        </div>
+    <div class="logo-wrap">
+      <div class="logo-ring">
+        <img src="LogoEDTEC.png" alt="EDTEC Logo">
+      </div>
     </div>
 
-    <script type="module" src="login.js"></script>
+    <div class="login-card">
 
-    <script>
-        // 🔥 Bloquear botón "atrás" en la página de login
-        // Si alguien llega aquí después de cerrar sesión, no puede volver al sistema
-        window.history.pushState(null, "", window.location.href);
-        window.addEventListener("popstate", function () {
-            window.history.pushState(null, "", window.location.href);
-        });
+      <h1 class="login-heading">Bienvenido de nuevo</h1>
+      <p class="login-sub">Ingresa tus credenciales para continuar</p>
 
-        function togglePassword() {
-            const input = document.getElementById("password");
-            const icono = document.getElementById("iconoPassword");
-            if (input.type === "password") {
-                input.type = "text";
-                icono.classList.replace("bi-eye", "bi-eye-slash");
-            } else {
-                input.type = "password";
-                icono.classList.replace("bi-eye-slash", "bi-eye");
-            }
-        }
-    </script>
+      <div class="field-group">
+        <label class="field-label" for="correo">Correo electrónico</label>
+        <div class="field-inner">
+          <i class="bi bi-envelope field-icon"></i>
+          <input type="email" id="correo" class="field-input"
+            placeholder="tu@correo.com" autocomplete="email">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="password">Contraseña</label>
+        <div class="field-inner">
+          <i class="bi bi-lock field-icon"></i>
+          <input type="password" id="password" class="field-input"
+            placeholder="••••••••" autocomplete="current-password">
+          <button class="btn-eye" type="button" onclick="togglePassword()" aria-label="Mostrar contraseña">
+            <i id="iconoPassword" class="bi bi-eye"></i>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn-login" id="btnLogin" onclick="handleLogin()">
+        <span class="btn-text">Ingresar</span>
+        <span class="btn-spinner" aria-hidden="true">
+          <span class="spinner-dot"></span>
+          <span class="spinner-dot"></span>
+          <span class="spinner-dot"></span>
+        </span>
+      </button>
+
+      <div id="error" class="error-msg" role="alert">
+        <i class="bi bi-exclamation-circle"></i>
+        <span id="error-text">Correo o contraseña incorrectos</span>
+      </div>
+
+      <div class="divider">
+        <div class="divider-line"></div>
+        <span class="divider-text">EDTEC © 2026</span>
+        <div class="divider-line"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module" src="login.js"></script>
+
+  <script>
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", () => {
+      window.history.pushState(null, "", window.location.href);
+    });
+
+    (function spawnStars() {
+      const c = document.getElementById('particles');
+      for (let i = 0; i < 55; i++) {
+        const s = document.createElement('div');
+        s.className = 'star';
+        const size = Math.random() * 2.5 + 0.5;
+        s.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;top:${Math.random()*100}%;animation-duration:${Math.random()*5+3}s;animation-delay:${Math.random()*6}s;`;
+        c.appendChild(s);
+      }
+    })();
+
+    function togglePassword() {
+      const input = document.getElementById("password");
+      const icono = document.getElementById("iconoPassword");
+      const visible = input.type === "text";
+      input.type = visible ? "password" : "text";
+      icono.classList.toggle("bi-eye", visible);
+      icono.classList.toggle("bi-eye-slash", !visible);
+    }
+
+    function showError(msg) {
+      const box = document.getElementById("error");
+      const txt = document.getElementById("error-text");
+      txt.textContent = msg || "Correo o contraseña incorrectos";
+      box.style.display = "flex";
+      box.style.animation = "none";
+      void box.offsetWidth;
+      box.style.animation = "errorPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both";
+      ["correo", "password"].forEach(id => {
+        const el = document.getElementById(id);
+        el.classList.add("error-state");
+        el.addEventListener("input", () => el.classList.remove("error-state"), { once: true });
+      });
+    }
+
+    async function handleLogin() {
+      const btn = document.getElementById("btnLogin");
+      const errorBox = document.getElementById("error");
+      errorBox.style.display = "none";
+      btn.classList.add("loading");
+      try {
+        if (typeof window.login === "function") await window.login();
+      } catch (e) {
+        showError(e?.message || "Error al iniciar sesión");
+      } finally {
+        btn.classList.remove("loading");
+      }
+    }
+
+    document.addEventListener("keydown", e => { if (e.key === "Enter") handleLogin(); });
+
+    ["correo", "password"].forEach(id => {
+      document.getElementById(id).addEventListener("input", () => {
+        document.getElementById("error").style.display = "none";
+      });
+    });
+  </script>
 
 </body>
-
 </html>
