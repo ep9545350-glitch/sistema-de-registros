@@ -98,6 +98,67 @@
       }
     })();
 
+ (function spawnShootingStars() {
+  function crearEstrella() {
+    const star = document.createElement('div');
+    star.className = 'shooting-star';
+
+    const angle = Math.random() * 30 + 20;
+    const rad = angle * Math.PI / 180;
+    const dist = Math.random() * 600 + 400;
+
+    const startFromTop = Math.random() > 0.3;
+    const startX = startFromTop
+      ? Math.random() * window.innerWidth
+      : window.innerWidth + Math.random() * 100;
+    const startY = startFromTop
+      ? -10
+      : Math.random() * window.innerHeight * 0.4;
+
+    const dx = Math.cos(rad) * dist;
+    const dy = Math.sin(rad) * dist;
+    const duration = Math.random() * 1200 + 800;
+
+    const colores = [
+      'rgba(255, 100, 100, 0.9)',
+      'rgba(100, 200, 255, 0.9)',
+      'rgba(180, 100, 255, 0.9)',
+      'rgba(100, 255, 180, 0.9)',
+      'rgba(255, 220, 80, 0.9)',
+      'rgba(255, 140, 50, 0.9)',
+      'rgba(255, 100, 200, 0.9)',
+      'rgba(80, 220, 255, 0.9)',
+    ];
+    const color = colores[Math.floor(Math.random() * colores.length)];
+
+    star.style.cssText = `
+      left: ${startX}px;
+      top: ${startY}px;
+      --angle: ${angle}deg;
+      --dx: ${dx}px;
+      --dy: ${dy}px;
+      --star-color: ${color};
+      background: ${color};
+      box-shadow: 0 0 4px 1px ${color};
+      animation: shootingStar ${duration}ms ease-in forwards;
+    `;
+
+    document.getElementById('particles').appendChild(star);
+    setTimeout(() => star.remove(), duration + 100);
+  }
+
+  function lanzar() {
+    crearEstrella();
+    setTimeout(lanzar, Math.random() * 10 + 100);
+  }
+
+  for (let i = 0; i < 4; i++) {
+    setTimeout(crearEstrella, i * 200);
+  }
+
+  setTimeout(lanzar, 800);
+})();
+
     function togglePassword() {
       const input = document.getElementById("password");
       const icono = document.getElementById("iconoPassword");

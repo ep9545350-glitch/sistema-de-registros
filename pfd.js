@@ -16,7 +16,6 @@ function generarPDFSeleccionado() {
     return;
   }
 
-  // ── Headers globales sin duplicados ──────────────────────────
   const headersGlobalesOrdenados = [];
   const headersVistos = new Set();
 
@@ -36,24 +35,17 @@ function generarPDFSeleccionado() {
     return;
   }
 
-  // ── PASO 1: Filtrar datos por hoja ────────────────────────────
-  // 🔥 REPORTE DIARIO → filtrar con todos los filtros activos
-  // 🔥 OTRAS HOJAS    → filtrar por los N° de orden que salieron de REPORTE DIARIO
   const datosFiltradosPorHoja = {};
-
-  // Primero filtrar REPORTE DIARIO
   const hojaRD = "REPORTE DIARIO";
+
   if (columnasSeleccionadas[hojaRD] && columnasSeleccionadas[hojaRD].size > 0) {
     let dataRD = datosPorHoja[hojaRD] || [];
     datosFiltradosPorHoja[hojaRD] = aplicarFiltroAData(dataRD, hojaRD);
   } else {
-    // aunque no tenga columnas seleccionadas, necesitamos los N° de orden
-    // para filtrar las demás hojas
     let dataRD = datosPorHoja[hojaRD] || [];
     datosFiltradosPorHoja[hojaRD] = aplicarFiltroAData(dataRD, hojaRD);
   }
 
-  // 🔥 Obtener los N° de orden del REPORTE DIARIO filtrado
   const headersRD = headersPorHoja[hojaRD] || [];
   const campoOrdenRD = headersRD.find(h => esCampoOrden(h));
   const ordenesFiltradas = new Set();
@@ -64,7 +56,6 @@ function generarPDFSeleccionado() {
     }
   });
 
-  // Filtrar las demás hojas por N° de orden
   for (let hoja in columnasSeleccionadas) {
     if (hoja === hojaRD) continue;
     const cols = columnasSeleccionadas[hoja];
@@ -77,7 +68,6 @@ function generarPDFSeleccionado() {
     const campoOrdenHoja = headersHoja.find(h => esCampoOrden(h));
 
     if (campoOrdenHoja && ordenesFiltradas.size > 0) {
-      // 🔥 Filtrar por N° de orden que coincida con REPORTE DIARIO
       datosFiltradosPorHoja[hoja] = data.filter(row => {
         const orden = String(row[campoOrdenHoja] || "").trim();
         return ordenesFiltradas.has(orden);
@@ -87,45 +77,24 @@ function generarPDFSeleccionado() {
     }
   }
 
-  // ── PASO 2: Unir todas las hojas por N° de orden ─────────────
-  // 🔥 El mapa usa el N° de orden como clave → unión exacta y confiable
-  const mapaFilas = new Map(); // clave: N° de orden (string)
-
-  // Primero insertar todos los registros de REPORTE DIARIO
+  const mapaFilas = new Map();
   const colsRD = columnasSeleccionadas[hojaRD];
+
   if (datosFiltradosPorHoja[hojaRD]) {
     datosFiltradosPorHoja[hojaRD].forEach((row, index) => {
-      const orden = campoOrdenRD
-        ? String(row[campoOrdenRD] || "").trim()
-        : String(index);
-
+      const orden = campoOrdenRD ? String(row[campoOrdenRD] || "").trim() : String(index);
       const clave = orden || `rd_${index}`;
 
-      if (!mapaFilas.has(clave)) {
-        mapaFilas.set(clave, {});
-      }
-
+      if (!mapaFilas.has(clave)) mapaFilas.set(clave, {});
       const filaObj = mapaFilas.get(clave);
 
-      // Guardar TODOS los campos del registro (aunque no estén seleccionados),
-      // para que la unión funcione bien
       if (colsRD && colsRD.size > 0) {
         colsRD.forEach(h => {
           let valor = row[h] ?? "";
-
-          if (h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")) {
-            valor = normalizarTipoMatrimonio(valor);
-          }
-          if (
-            h.toLowerCase().includes("fecha") ||
-            h.toLowerCase().includes("f.") ||
-            h.toLowerCase().includes("consejeria") ||
-            h.toLowerCase().includes("laboratorio") ||
-            h.toLowerCase().includes("consulta") ||
-            h.toLowerCase().includes("recibo")
-          ) {
-            valor = soloFecha(valor);
-          }
+          if (h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")) valor = normalizarTipoMatrimonio(valor);
+          if (h.toLowerCase().includes("fecha") || h.toLowerCase().includes("f.") ||
+            h.toLowerCase().includes("consejeria") || h.toLowerCase().includes("laboratorio") ||
+            h.toLowerCase().includes("consulta") || h.toLowerCase().includes("recibo")) valor = soloFecha(valor);
           if (typeof valor === "string") valor = valor.trim();
           filaObj[h] = valor;
         });
@@ -133,7 +102,6 @@ function generarPDFSeleccionado() {
     });
   }
 
-  // Luego agregar datos de las demás hojas al mapa, por N° de orden
   for (let hoja in columnasSeleccionadas) {
     if (hoja === hojaRD) continue;
     const cols = columnasSeleccionadas[hoja];
@@ -144,46 +112,23 @@ function generarPDFSeleccionado() {
     const campoOrdenHoja = headersHoja.find(h => esCampoOrden(h));
 
     dataFiltrada.forEach((row, index) => {
-      const orden = campoOrdenHoja
-        ? String(row[campoOrdenHoja] || "").trim()
-        : String(index);
-
-      // 🔥 Solo agregar si ya existe en el mapa (proviene de REPORTE DIARIO filtrado)
+      const orden = campoOrdenHoja ? String(row[campoOrdenHoja] || "").trim() : String(index);
       if (!mapaFilas.has(orden)) return;
-
       const filaObj = mapaFilas.get(orden);
 
       cols.forEach(h => {
         let valor = row[h] ?? "";
-
-        if (h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")) {
-          valor = normalizarTipoMatrimonio(valor);
-        }
-        if (
-          h.toLowerCase().includes("fecha") ||
-          h.toLowerCase().includes("f.") ||
-          h.toLowerCase().includes("consejeria") ||
-          h.toLowerCase().includes("laboratorio") ||
-          h.toLowerCase().includes("consulta") ||
-          h.toLowerCase().includes("recibo")
-        ) {
-          valor = soloFecha(valor);
-        }
+        if (h.toLowerCase().replace(/\s+/g, "").includes("matrimonio")) valor = normalizarTipoMatrimonio(valor);
+        if (h.toLowerCase().includes("fecha") || h.toLowerCase().includes("f.") ||
+          h.toLowerCase().includes("consejeria") || h.toLowerCase().includes("laboratorio") ||
+          h.toLowerCase().includes("consulta") || h.toLowerCase().includes("recibo")) valor = soloFecha(valor);
         if (typeof valor === "string") valor = valor.trim();
-
-        // Solo rellenar si está vacío
-        if (!filaObj[h] || filaObj[h].toString().trim() === "") {
-          filaObj[h] = valor;
-        }
+        if (!filaObj[h] || filaObj[h].toString().trim() === "") filaObj[h] = valor;
       });
     });
   }
 
-  // ── PASO 3: Construir array de filas en orden ─────────────────
-  // 🔥 Ordenar por N° de orden numérico
-  const clavesOrdenadas = [...mapaFilas.keys()].sort((a, b) => {
-    return Number(a) - Number(b);
-  });
+  const clavesOrdenadas = [...mapaFilas.keys()].sort((a, b) => Number(a) - Number(b));
 
   let filasCombinadas = clavesOrdenadas.map(clave => {
     const obj = mapaFilas.get(clave);
@@ -198,7 +143,6 @@ function generarPDFSeleccionado() {
     return;
   }
 
-  // ── Descripción del filtro ────────────────────────────────────
   let descripcionFiltro = "";
   if (filtroGlobal.nombre) descripcionFiltro += ` | Nombre: ${filtroGlobal.nombre.toUpperCase()}`;
   if (filtroGlobal.dni) descripcionFiltro += ` | DNI: ${filtroGlobal.dni}`;
@@ -207,7 +151,6 @@ function generarPDFSeleccionado() {
   if (filtroGlobal.hasta) descripcionFiltro += ` | Hasta: ${soloFecha(filtroGlobal.hasta)}`;
   if (!descripcionFiltro) descripcionFiltro = " | Sin filtros (todos los registros)";
 
-  // ── Headers formateados ───────────────────────────────────────
   const headersFormateados = headersGlobalesOrdenados.map(h => {
     let palabras = h.split(" ");
     if (palabras.length >= 2) {
@@ -217,7 +160,6 @@ function generarPDFSeleccionado() {
     return h;
   });
 
-  // ── Calcular anchos ───────────────────────────────────────────
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   pdf.setFontSize(7);
@@ -243,11 +185,10 @@ function generarPDFSeleccionado() {
     columnStyles[i].cellWidth *= scale;
   });
 
-  // ── Generar PDF ───────────────────────────────────────────────
   pdf.autoTable({
     head: [
       [{
-        content: "Base de datos de atención a contrayentes para la emisión de certificado médico prenupcial - 2026",
+        content: "Base de datos de atención a contrayentes(Consejería en ITS) para la emisión de certificado médico prenupcial - 2026",
         colSpan: headersFormateados.length,
         styles: {
           halign: "center", fillColor: [180, 180, 180],
@@ -311,148 +252,416 @@ function generarPDFSeleccionado() {
 
   pdf.save("Base de datos de atención de contrayentes para la emisión de certificado médico prenupcial - 2026.pdf");
 }
+
+
+// ════════════════════════════════════════════════════════
+// 🔥 CAPTURA HD con leyendas dibujadas manualmente
+// Síncrono, rápido y confiable
+// ════════════════════════════════════════════════════════
+function capturarChartConLeyenda(chartInstance, titulo, leyendas, anchoHD) {
+  // leyendas: [{ label, color, pct }]
+  if (!chartInstance) return null;
+
+  const escala   = 2;
+  const srcCanvas = chartInstance.canvas;
+  const srcW     = srcCanvas.width  || 400;
+  const srcH     = srcCanvas.height || 300;
+
+  // Área extra para título + leyenda encima del gráfico
+  const paddingTop    = 52 * escala;   // título + leyenda
+  const paddingLados  = 16 * escala;
+  const paddingBottom = 10 * escala;
+
+  const totalW = anchoHD * escala;
+  const chartW = totalW - paddingLados * 2;
+  const chartH = Math.round(chartW * (srcH / srcW));
+  const totalH = paddingTop + chartH + paddingBottom;
+
+  const out = document.createElement("canvas");
+  out.width  = totalW;
+  out.height = totalH;
+  const ctx  = out.getContext("2d");
+
+  // Fondo
+  ctx.fillStyle = "#f8fafc";
+  ctx.fillRect(0, 0, totalW, totalH);
+
+  // Borde redondeado simulado (rect simple)
+  ctx.strokeStyle = "#e2e8f0";
+  ctx.lineWidth   = 2;
+  ctx.strokeRect(1, 1, totalW - 2, totalH - 2);
+
+  // ── Título ──
+  ctx.fillStyle  = "#1e293b";
+  ctx.font       = `bold ${13 * escala}px Segoe UI, Arial, sans-serif`;
+  ctx.textAlign  = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText(titulo, paddingLados, 10 * escala);
+
+  // ── Leyendas ──
+  let lx = paddingLados;
+  const ly = 28 * escala;
+  const cuadrado = 10 * escala;
+
+  leyendas.forEach(l => {
+    // cuadradito de color
+    ctx.fillStyle = l.color;
+    ctx.fillRect(lx, ly, cuadrado, cuadrado);
+
+    // texto
+    ctx.fillStyle    = "#64748b";
+    ctx.font         = `${11 * escala}px Segoe UI, Arial, sans-serif`;
+    ctx.textAlign    = "left";
+    ctx.textBaseline = "top";
+    const txt = `${l.label}  ${l.pct}`;
+    ctx.fillText(txt, lx + cuadrado + 5 * escala, ly);
+    lx += ctx.measureText(txt).width + cuadrado + 18 * escala;
+  });
+
+  // ── Gráfico Chart.js ──
+  ctx.drawImage(srcCanvas, paddingLados, paddingTop, chartW, chartH);
+
+  const ratio = out.height / out.width;
+  return { img: out.toDataURL("image/png", 1.0), w: out.width, h: out.height, ratio };
+}
+
+
 function exportarDashboardPDF() {
 
-  const canvasBarra = document.getElementById("graficoBarras");
-  const canvasPie = document.getElementById("graficoTorta");
+  const canvasBarra     = document.getElementById("graficoBarras");
+  const canvasPie       = document.getElementById("graficoTorta");
+  const canvasTendencia = document.getElementById("graficoTendencia");
 
-  // 🔥 Verificar que el dashboard fue generado
   if (!canvasBarra || !canvasPie) {
     mostrarAlerta("No hay gráficos disponibles. Genera el dashboard primero.", "danger");
     return;
   }
-
-  // 🔥 Verificar que los gráficos tienen datos
   if (!window.graficoBarra || !window.graficoPie) {
     mostrarAlerta("Genera el dashboard antes de exportar.", "warning");
     return;
   }
 
   const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF("landscape", "mm", "a4");
-  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pdf        = new jsPDF("landscape", "mm", "a4");
+  const pageWidth  = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
 
-  // ── Obtener fechas del filtro del dashboard ───────────────────
   const desde = document.getElementById("filtroFechaDesdeDashboard")?.value || "";
-  const hasta = document.getElementById("filtroFechaHastaDashboard")?.value || "";
+  const hasta  = document.getElementById("filtroFechaHastaDashboard")?.value || "";
 
-  // ── Recalcular datos con el mismo filtro del dashboard ────────
-  const data = datosPorHoja["REPORTE DIARIO"] || [];
+  const data     = datosPorHoja["REPORTE DIARIO"] || [];
   const headerRD = headersPorHoja["REPORTE DIARIO"] || [];
 
   const campoTipoFijo = headerRD.find(h =>
-    h.toLowerCase().replace(/\s+/g, "")
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    h.toLowerCase().replace(/\s+/g,"")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
       .includes("matrimonio")
   );
-
   const campoFechaFijo = headerRD.find(h =>
     h.toLowerCase().includes("fecha") || h.toLowerCase().includes("f.")
   );
 
-  let conteo = {};
-  let totalMatrimonios = 0;
+  const nombresMeses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  let conteo = {}, totalMatrimonios = 0, tendenciaMesesTotal = {};
 
   data.forEach(row => {
     let tipo = normalizarTipoMatrimonio(row[campoTipoFijo] || "");
     if (!tipo || tipo.trim() === "") return;
-
     let valorFecha = row[campoFechaFijo] || "";
     if (!valorFecha || valorFecha.toString().trim() === "") return;
-
     let fechaISO = fechaAISO(valorFecha.toString().trim());
     if (!fechaISO) return;
 
-    if (desde && fechaISO < desde) return;
-    if (hasta && fechaISO > hasta) return;
+    let mes = parseInt(fechaISO.split("-")[1], 10) - 1;
+    let nombreMes = nombresMeses[mes];
+    if (!tendenciaMesesTotal[nombreMes]) tendenciaMesesTotal[nombreMes] = 0;
+    tendenciaMesesTotal[nombreMes]++;
 
+    if (desde && fechaISO < desde) return;
+    if (hasta  && fechaISO > hasta) return;
     totalMatrimonios++;
     if (!conteo[tipo]) conteo[tipo] = 0;
     conteo[tipo]++;
   });
 
-  const labels = Object.keys(conteo);
+  const labels  = Object.keys(conteo);
   const valores = Object.values(conteo);
 
-  // ── Texto del período ─────────────────────────────────────────
-  let textoPeriodo = "Período: todos los registros";
-  if (desde && hasta) {
-    textoPeriodo = `Período: ${soloFecha(desde)} al ${soloFecha(hasta)}`;
-  } else if (desde) {
-    textoPeriodo = `Desde: ${soloFecha(desde)}`;
-  } else if (hasta) {
-    textoPeriodo = `Hasta: ${soloFecha(hasta)}`;
+  let textoPeriodo = "Todos los registros";
+  if (desde && hasta) textoPeriodo = `${soloFecha(desde)} al ${soloFecha(hasta)}`;
+  else if (desde)     textoPeriodo = `Desde ${soloFecha(desde)}`;
+  else if (hasta)     textoPeriodo = `Hasta ${soloFecha(hasta)}`;
+
+  // ── HELPERS ──
+  function hexToRgb(hex) {
+    return [
+      parseInt(hex.substring(1,3),16),
+      parseInt(hex.substring(3,5),16),
+      parseInt(hex.substring(5,7),16)
+    ];
   }
 
-  // ── Header ────────────────────────────────────────────────────
-  pdf.setFillColor(13, 110, 253);
-  pdf.rect(0, 0, pageWidth, 20, "F");
+  function colorPorTipo(tipo, i) {
+    if (tipo === "PAGADO") return "#2563eb";
+    if (tipo === "MASIVO") return "#06b6d4";
+    return ["#6f42c1","#198754","#f97316","#dc3545"][i % 4];
+  }
 
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFontSize(16);
-  pdf.text("Frecuencia de atención a contrayentes por tipo de matrimonio – 2026", 14, 12);
-
-  pdf.setFontSize(10);
-  pdf.text(`Fecha: ${new Date().toLocaleDateString()}`, pageWidth - 50, 12);
-
-  // ── Subtítulo período ─────────────────────────────────────────
-  pdf.setTextColor(0, 0, 0);
-  pdf.setFontSize(11);
-  pdf.text(textoPeriodo, 14, 28);
-
-  // ── Tarjeta total ─────────────────────────────────────────────
-  pdf.setFillColor(255, 165, 0);
-  pdf.roundedRect(14, 32, 60, 30, 4, 4, "F");
-
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFontSize(18);
-  let totalStr = totalMatrimonios.toString();
-  pdf.text(totalStr, 14 + 30 - pdf.getTextWidth(totalStr) / 2, 45);
-
-  pdf.setFontSize(10);
-  pdf.text(" MATRIMONIOS", 14 + 30 - pdf.getTextWidth(" MATRIMONIOS") / 2, 55);
-
-  // ── Tarjetas por tipo ─────────────────────────────────────────
-  const colores = ["#0d6efd", "#198754", "#ffc107", "#dc3545", "#6f42c1", "#20c997", "#fd7e14", "#0dcaf0"];
-  let x = 80, y = 32;
-  const ancho = 45, alto = 30, espacio = 8;
-
-  labels.forEach((tipo, i) => {
-    let colorHex = tipo === "MASIVO" ? "#51D1F6" : tipo === "PAGADO" ? "#0d6efd" : colores[i % colores.length];
-    let r = parseInt(colorHex.substring(1, 3), 16);
-    let g = parseInt(colorHex.substring(3, 5), 16);
-    let b = parseInt(colorHex.substring(5, 7), 16);
-
-    pdf.setFillColor(200, 200, 200);
-    pdf.roundedRect(x + 1, y + 1, ancho, alto, 4, 4, "F");
+  function tarjeta(x, y, w, h, hex, titulo, valor, subtitulo) {
+    const [r,g,b] = hexToRgb(hex);
     pdf.setFillColor(r, g, b);
-    pdf.roundedRect(x, y, ancho, alto, 4, 4, "F");
-
+    pdf.roundedRect(x, y, w, h, 3, 3, "F");
     pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(16);
-    let val = valores[i].toString();
-    pdf.text(val, x + ancho / 2 - pdf.getTextWidth(val) / 2, y + 12);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(22);
+    let vs = valor.toString();
+    pdf.text(vs, x + w/2 - pdf.getTextWidth(vs)/2, y + h * 0.45);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7.5);
+    pdf.text(titulo, x + w/2 - pdf.getTextWidth(titulo)/2, y + h * 0.65);
+    if (subtitulo && subtitulo.trim() !== "") {
+      pdf.setFontSize(6.5);
+      pdf.setTextColor(255, 255, 255);
+      pdf.text(subtitulo, x + w/2 - pdf.getTextWidth(subtitulo)/2, y + h * 0.83);
+    }
+  }
 
-    pdf.setFontSize(10);
-    pdf.text(tipo, x + ancho / 2 - pdf.getTextWidth(tipo) / 2, y + 22);
+  function lineaDivisora(y) {
+    pdf.setDrawColor(220,220,220);
+    pdf.setLineWidth(0.25);
+    pdf.line(14, y, pageWidth - 14, y);
+  }
 
-    x += ancho + espacio;
-    if (x + ancho > pageWidth) { x = 80; y += alto + espacio; }
+  function encabezado(titulo, subtitulo) {
+    pdf.setFillColor(37,99,235);
+    pdf.rect(0, 0, pageWidth, 18, "F");
+    pdf.setFillColor(29,78,216);
+    pdf.rect(0, 13, pageWidth, 5, "F");
+
+    pdf.setFillColor(255,255,255);
+    pdf.roundedRect(9, 4, 9, 9, 1.5, 1.5, "F");
+    pdf.setFontSize(5.5);
+    pdf.setTextColor(37,99,235);
+    pdf.setFont("helvetica","bold");
+    pdf.text("MPT", 10.2, 10);
+
+    pdf.setTextColor(255,255,255);
+    pdf.setFont("helvetica","bold");
+    pdf.setFontSize(9);
+    pdf.text(titulo, 21, 9);
+    pdf.setFont("helvetica","normal");
+    pdf.setFontSize(7);
+    pdf.text(subtitulo, 21, 15);
+    pdf.setFontSize(7);
+    pdf.setTextColor(196,213,255);
+    let fechaHoy = new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit",year:"numeric"});
+    pdf.text(`Generado: ${fechaHoy}`, pageWidth - 14 - pdf.getTextWidth(`Generado: ${fechaHoy}`), 15);
+  }
+
+  function footer(pagina, total) {
+    pdf.setFillColor(241,245,249);
+    pdf.rect(0, pageHeight - 9, pageWidth, 9, "F");
+    pdf.setDrawColor(220,220,220);
+    pdf.setLineWidth(0.2);
+    pdf.line(0, pageHeight - 9, pageWidth, pageHeight - 9);
+    pdf.setFontSize(6.5);
+    pdf.setTextColor(148,163,184);
+    pdf.text("SUBGERENCIA DE SALUD – OBSTETRICIA", 14, pageHeight - 3.5);
+    let pag = `Página ${pagina} de ${total}`;
+    pdf.text(pag, pageWidth/2 - pdf.getTextWidth(pag)/2, pageHeight - 3.5);
+    let fechaHoy = new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit",year:"numeric"});
+    pdf.text(`Generado: ${fechaHoy}`, pageWidth - 14 - pdf.getTextWidth(`Generado: ${fechaHoy}`), pageHeight - 3.5);
+  }
+
+  const totalPaginas = (canvasTendencia && window.graficoLinea) ? 2 : 1;
+
+  // ════════════════════════════════════════════════════════
+  // ✅ CAPTURA CORREGIDA — usa capturarChartConLeyenda
+  // ════════════════════════════════════════════════════════
+  const leyendasBarra = labels.map((tipo, i) => ({
+    label: tipo,
+    color: colorPorTipo(tipo, i),
+    pct: totalMatrimonios > 0 ? ((valores[i] / totalMatrimonios) * 100).toFixed(1) + "%" : "0%"
+  }));
+  const capBarra = capturarChartConLeyenda(
+    window.graficoBarra,
+    "Frecuencia por tipo de matrimonio",
+    leyendasBarra,
+    600
+  );
+
+  const leyendasPie = labels.map((tipo, i) => ({
+    label: tipo,
+    color: colorPorTipo(tipo, i),
+    pct: totalMatrimonios > 0 ? ((valores[i] / totalMatrimonios) * 100).toFixed(1) + "%" : "0%"
+  }));
+  const capPie = capturarChartConLeyenda(
+    window.graficoPie,
+    "Porcentaje por tipo de matrimonio",
+    leyendasPie,
+    600
+  );
+
+  const capTendencia = (canvasTendencia && window.graficoLinea)
+    ? capturarChartConLeyenda(
+        window.graficoLinea,
+        "Tendencia mensual de atenciones",
+        [{ label: "Total por mes", color: "#2563eb", pct: "" }],
+        600
+      )
+    : null;
+
+  // ════════════════════════════════════════════════════════
+  // PÁGINA 1 — Barras + Torta
+  // ════════════════════════════════════════════════════════
+  encabezado(
+    "Gráfico de frecuencia y porcentual – Atención a contrayentes en Consejería ITS según tipo de matrimonio",
+    "SUBGERENCIA DE SALUD  ·  OBSTETRICIA  ·  2026"
+  );
+
+  pdf.setFillColor(241,245,249);
+  pdf.rect(0, 18, pageWidth, 8, "F");
+  pdf.setFont("helvetica","bold");
+  pdf.setFontSize(7.5);
+  pdf.setTextColor(71,85,105);
+  pdf.text("PERÍODO:", 14, 23.5);
+  pdf.setFont("helvetica","normal");
+  pdf.text(textoPeriodo, 14 + pdf.getTextWidth("PERÍODO:") + 3, 23.5);
+  let totalTexto = `TOTAL: ${totalMatrimonios} matrimonios`;
+  pdf.setFont("helvetica","bold");
+  pdf.text(totalTexto, pageWidth - 14 - pdf.getTextWidth(totalTexto), 23.5);
+
+  lineaDivisora(26);
+
+  const tarjY  = 29;
+  const tarjH  = 18;
+  const tarjW  = 48;
+  const gap    = 5;
+  const totalT = 1 + labels.length;
+  const grupoW = totalT * tarjW + (totalT - 1) * gap;
+  let tarjX    = (pageWidth - grupoW) / 2;
+
+  tarjeta(tarjX, tarjY, tarjW, tarjH, "#f97316", "TOTAL MATRIMONIOS", totalMatrimonios, "");
+  tarjX += tarjW + gap;
+  labels.forEach((tipo, i) => {
+    let pct = totalMatrimonios > 0
+      ? ((valores[i] / totalMatrimonios) * 100).toFixed(1) + "% del total"
+      : "0%";
+    tarjeta(tarjX, tarjY, tarjW, tarjH, colorPorTipo(tipo, i), tipo, valores[i], pct);
+    tarjX += tarjW + gap;
   });
 
-  // ── Gráficos ──────────────────────────────────────────────────
-  const imgBarra = canvasBarra.toDataURL("image/png", 1.0);
-  const imgPie = canvasPie.toDataURL("image/png", 1.0);
-  const inicioY = y + alto + 15;
-  const imgWidth = pageWidth / 2 - 20;
+  lineaDivisora(tarjY + tarjH + 4);
 
-  pdf.addImage(imgBarra, "PNG", 14, inicioY, imgWidth, 80);
-  pdf.addImage(imgPie, "PNG", pageWidth / 2 + 5, inicioY, 80, 80);
+  const grafY    = tarjY + tarjH + 8;
+  const grafH    = pageHeight - grafY - 14;
+  const gapPanel = 6;
+  const panelW   = (pageWidth - 28 - gapPanel) / 2;
+  const panel1X  = 14;
+  const panel2X  = panel1X + panelW + gapPanel;
 
-  // ── Footer ────────────────────────────────────────────────────
-  pdf.setFontSize(9);
-  pdf.setTextColor(120);
-  pdf.text("SUBGERENCIA DE SALUD - OBSTETRICIA", 14, pdf.internal.pageSize.getHeight() - 5);
+  // Panel BARRAS
+  pdf.setFillColor(248,250,252);
+  pdf.roundedRect(panel1X, grafY, panelW, grafH, 3, 3, "F");
+  pdf.setDrawColor(226,232,240);
+  pdf.setLineWidth(0.3);
+  pdf.roundedRect(panel1X, grafY, panelW, grafH, 3, 3, "S");
 
-  pdf.save("Frecuencia de contrayentes por tipo de matrimonio – MPT 2026.pdf");
+  if (capBarra) {
+    const margin = 4;
+    const imgW = panelW - margin * 2;
+    const imgH = imgW * capBarra.ratio;
+    const imgX = panel1X + margin;
+    const imgY = grafY + (grafH - Math.min(imgH, grafH - margin * 2)) / 2;
+    pdf.addImage(capBarra.img, "PNG", imgX, imgY, imgW, Math.min(imgH, grafH - margin * 2), "", "FAST");
+  }
+
+  // Panel TORTA
+  pdf.setFillColor(248,250,252);
+  pdf.roundedRect(panel2X, grafY, panelW, grafH, 3, 3, "F");
+  pdf.setDrawColor(226,232,240);
+  pdf.setLineWidth(0.3);
+  pdf.roundedRect(panel2X, grafY, panelW, grafH, 3, 3, "S");
+
+  if (capPie) {
+    const margin = 4;
+    const imgW = panelW - margin * 2;
+    const imgH = imgW * capPie.ratio;
+    const imgX = panel2X + margin;
+    const imgY = grafY + (grafH - Math.min(imgH, grafH - margin * 2)) / 2;
+    pdf.addImage(capPie.img, "PNG", imgX, imgY, imgW, Math.min(imgH, grafH - margin * 2), "", "FAST");
+  }
+
+  footer(1, totalPaginas);
+
+  // ════════════════════════════════════════════════════════
+  // PÁGINA 2 — Tendencia mensual
+  // ════════════════════════════════════════════════════════
+  if (capTendencia) {
+    pdf.addPage();
+
+    encabezado(
+      "Tendencia mensual de atención a contrayentes – Consejería ITS  2026",
+      "Evolución histórica de todos los registros por mes  ·  Sin filtro de fecha"
+    );
+
+    pdf.setFillColor(241,245,249);
+    pdf.rect(0, 18, pageWidth, 8, "F");
+    pdf.setFont("helvetica","bold");
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(71,85,105);
+    pdf.text("NOTA:", 14, 23.5);
+    pdf.setFont("helvetica","normal");
+    pdf.text("Este gráfico muestra la evolución completa sin filtro de fecha aplicado.", 14 + pdf.getTextWidth("NOTA:") + 3, 23.5);
+
+    lineaDivisora(26);
+
+    const mesesOrdenados = nombresMeses.filter(m => tendenciaMesesTotal[m]);
+    const maxVal  = Math.max(...Object.values(tendenciaMesesTotal));
+    const totalM  = mesesOrdenados.length;
+    const mAncho  = Math.min(22, (pageWidth - 28 - (totalM - 1) * 2) / totalM);
+    const mAlto   = 18;
+    const grupoMW = totalM * mAncho + (totalM - 1) * 2;
+    let mx        = (pageWidth - grupoMW) / 2;
+    const my      = 29;
+
+    mesesOrdenados.forEach(mes => {
+      let v     = tendenciaMesesTotal[mes];
+      let ratio = v / maxVal;
+      pdf.setFillColor(249, Math.round(115 + ratio * 50), 22);
+      pdf.roundedRect(mx, my, mAncho, mAlto, 2, 2, "F");
+      pdf.setTextColor(255,255,255);
+      pdf.setFont("helvetica","bold");
+      pdf.setFontSize(10);
+      let vs = v.toString();
+      pdf.text(vs, mx + mAncho/2 - pdf.getTextWidth(vs)/2, my + mAlto * 0.54);
+      pdf.setFont("helvetica","normal");
+      pdf.setFontSize(5.5);
+      pdf.text(mes.toUpperCase(), mx + mAncho/2 - pdf.getTextWidth(mes.toUpperCase())/2, my + mAlto * 0.85);
+      mx += mAncho + 2;
+    });
+
+    lineaDivisora(my + mAlto + 4);
+
+    const tendY      = my + mAlto + 8;
+    const tendH      = pageHeight - tendY - 14;
+    const tendPanelW = pageWidth - 28;
+
+    pdf.setFillColor(248,250,252);
+    pdf.roundedRect(14, tendY, tendPanelW, tendH, 3, 3, "F");
+    pdf.setDrawColor(226,232,240);
+    pdf.setLineWidth(0.3);
+    pdf.roundedRect(14, tendY, tendPanelW, tendH, 3, 3, "S");
+
+    const margin = 4;
+    const tImgW = tendPanelW - margin * 2;
+    const tImgH = tImgW * capTendencia.ratio;
+    const tImgX = 14 + margin;
+    const tImgY = tendY + (tendH - Math.min(tImgH, tendH - margin * 2)) / 2;
+    pdf.addImage(capTendencia.img, "PNG", tImgX, tImgY, tImgW, Math.min(tImgH, tendH - margin * 2), "", "FAST");
+
+    footer(2, totalPaginas);
+  }
+
+  pdf.save("Dashboard_Matrimonios_MPT_2026.pdf");
 }

@@ -131,13 +131,9 @@ async function eliminarFila() {
         r => r._id !== registroSeleccionado._id
       );
 
-    // 🔥 RENUMERAR todas las hojas después de eliminar
-    mostrarToast("Renumerando registros...", "success");
-    for (let hoja in datosPorHoja) {
-      await renumerarHoja(hoja);
-    }
+    // 🔥 ELIMINADO: ya no se renumera nada, cada registro conserva su N° original
 
-    mostrarToast("Eliminado y renumerado correctamente ✅");
+    mostrarToast("Eliminado correctamente ✅");
 
     const hojaAntes = hojaSeleccionada;
 
@@ -449,12 +445,15 @@ function mostrarTodasLasTablas() {
 
     let headers = headersPorHoja[hoja];
 
-    let headersVisibles = headers.filter(h => {
-      return dataFiltradaLocal.some(row => {
-        let valor = row[h];
-        return valor !== null && valor !== undefined && valor.toString().trim() !== "";
-      });
-    });
+    const COLUMNAS_SIEMPRE_VISIBLES = ["CMP ANULADO", "MOTIVO DE ANULACION"];
+
+let headersVisibles = headers.filter(h => {
+  if (COLUMNAS_SIEMPRE_VISIBLES.includes(h.trim().toUpperCase())) return true;
+  return dataFiltradaLocal.some(row => {
+    let valor = row[h];
+    return valor !== null && valor !== undefined && valor.toString().trim() !== "";
+  });
+});
 
     // En mostrarTodasLasTablas() — reemplaza el bloque let html = `...`
     let html = `
@@ -696,85 +695,133 @@ function fechaAISO(valor) {
   return "";
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 📋 FORMULARIO MEJORADO — reemplaza tu función generarFormulario()
+// ═══════════════════════════════════════════════════════════════
+
 function generarFormulario() {
   const contenedor = document.getElementById("formularioDinamico");
   contenedor.innerHTML = "";
 
   let inputsCreados = {};
+  let hojaIndex = 0;
+
+  const iconosPorHoja = {
+    "REPORTE DIARIO":            "ti-calendar-event",
+    "REGISTRO DE ATENCION":      "ti-stethoscope",
+    "RESULTADOS DE LABORATORIO": "ti-flask",
+  };
+
+  const coloresPorHoja = [
+    { bg: "linear-gradient(135deg,#6366f1,#8b5cf6)", badge: "#6366f1" },
+    { bg: "linear-gradient(135deg,#0ea5e9,#06b6d4)",  badge: "#0ea5e9" },
+    { bg: "linear-gradient(135deg,#10b981,#34d399)",  badge: "#10b981" },
+  ];
 
   for (let hoja in headersPorHoja) {
-
     if (hoja === HOJA_OCULTA) continue;
 
-    contenedor.innerHTML += `
-      <div class="col-12 mt-4">
-        <h5 class="bg-primary text-white p-2 rounded">${hoja.toUpperCase()}</h5>
-      </div>
-    `;
+    const color  = coloresPorHoja[hojaIndex % coloresPorHoja.length];
+    const icono  = iconosPorHoja[hoja] || "ti-forms";
+    const campos = [];
 
     headersPorHoja[hoja].forEach(h => {
-
-      let nombre = h.toLowerCase().trim();
-
-
+      const nombre = h.toLowerCase().trim();
       if (esCampoOrden(nombre)) return;
-
-
-      if (
-        (nombre.includes("nombre") || nombre.includes("apellidos")) &&
-        hoja !== "REPORTE DIARIO"
-      ) {
-        return;
-      }
+      if ((nombre.includes("nombre") || nombre.includes("apellidos")) && hoja !== "REPORTE DIARIO") return;
 
       let tipo = "text";
-
-
       if (
-        nombre.includes("fecha") ||
-        nombre.includes("f.") ||
-        nombre.includes("consejeria") ||
-        nombre.includes("laboratorio") ||
+        nombre.includes("fecha") || nombre.includes("f.") ||
+        nombre.includes("consejeria") || nombre.includes("laboratorio") ||
         nombre.includes("consulta")
-      ) {
-        tipo = "date";
-      }
+      ) tipo = "date";
 
-      if (camposCompartidos[h]) {
+      // campo global ya renderizado → saltar
+      if (camposCompartidos[h] && inputsCreados[h]) return;
 
+      campos.push({ h, tipo, esGlobal: !!camposCompartidos[h] });
+      if (camposCompartidos[h]) inputsCreados[h] = true;
+    });
 
-        if (!inputsCreados[h]) {
-
-          let requerido = "";
-          contenedor.innerHTML += `
-      <div class="col-md-4">
-        <label>${h} (global)</label>
-        <input type="${tipo}" id="global_${h}" class="form-control" ${requerido}>
+    // ── Encabezado de sección ──
+    contenedor.innerHTML += `
+      <div class="col-12 form-seccion-header" style="animation-delay:${hojaIndex * 0.08}s">
+        <div class="form-seccion-pill" style="background:${color.bg}">
+          <i class="ti ${icono}" style="font-size:18px;"></i>
+          <span>${hoja}</span>
+        </div>
+        <div class="form-seccion-line" style="background:${color.badge}22"></div>
       </div>
     `;
 
-          inputsCreados[h] = true;
-        }
+    // ── Campos ──
+    campos.forEach((campo, idx) => {
+      const { h, tipo, esGlobal } = campo;
+      const inputId = esGlobal ? `global_${h}` : `${hoja}_${h}`;
+      const iconoCampo = obtenerIconoCampo(h);
+      const delay = (hojaIndex * 0.08 + idx * 0.04).toFixed(2);
 
-      } else {
-        contenedor.innerHTML += `
-          <div class="col-md-4">
-            <label>${h}</label>
-            <input type="${tipo}" id="${hoja}_${h}" class="form-control">
+      contenedor.innerHTML += `
+        <div class="col-md-4 col-sm-6 form-campo-wrap" style="animation-delay:${delay}s">
+          <div class="form-campo-card ${tipo === 'date' ? 'es-fecha' : ''}">
+            <div class="form-campo-icon" style="color:${color.badge}">
+              <i class="ti ${iconoCampo}"></i>
+            </div>
+            <div class="form-campo-body">
+              <label class="form-campo-label" for="${inputId}">
+                ${h}${esGlobal ? ' <span class="form-badge-global">global</span>' : ''}
+              </label>
+              <input
+                type="${tipo}"
+                id="${inputId}"
+                class="form-campo-input"
+                placeholder="${tipo === 'date' ? '' : 'Ingrese ' + h.toLowerCase()}"
+                autocomplete="off"
+              >
+            </div>
           </div>
-        `;
-      }
-
+        </div>
+      `;
     });
+
+    hojaIndex++;
   }
 
-  document.querySelectorAll("#formularioDinamico input").forEach(input => {
-    input.addEventListener("input", function () {
-      this.value = this.value.toUpperCase();
+  // ── Evento: mayúsculas en tiempo real ──
+  contenedor.querySelectorAll(".form-campo-input").forEach(input => {
+    if (input.type !== "date") {
+      input.addEventListener("input", function () {
+        this.value = this.value.toUpperCase();
+      });
+    }
+    // efecto focus
+    input.addEventListener("focus", function () {
+      this.closest(".form-campo-card").classList.add("focused");
+    });
+    input.addEventListener("blur", function () {
+      this.closest(".form-campo-card").classList.remove("focused");
     });
   });
 }
 
+// ── Helper: icono según el nombre del campo ──
+function obtenerIconoCampo(nombre) {
+  const n = nombre.toLowerCase();
+  if (n.includes("nombre") || n.includes("apellido")) return "ti-user";
+  if (n.includes("dni") || n.includes("ce"))           return "ti-id";
+  if (n.includes("fecha") || n.includes("f."))         return "ti-calendar";
+  if (n.includes("matrimonio") || n.includes("tipo"))  return "ti-rings";
+  if (n.includes("telefono") || n.includes("cel"))     return "ti-phone";
+  if (n.includes("correo") || n.includes("email"))     return "ti-mail";
+  if (n.includes("edad"))                              return "ti-number";
+  if (n.includes("direccion") || n.includes("dir"))    return "ti-map-pin";
+  if (n.includes("obs") || n.includes("nota"))         return "ti-notes";
+  if (n.includes("resultado") || n.includes("lab"))    return "ti-flask";
+  if (n.includes("cmp") || n.includes("medico"))       return "ti-stethoscope";
+  if (n.includes("recibo") || n.includes("pago"))      return "ti-receipt";
+  return "ti-pencil";
+}
 function cargarSelector() {
   const selector = document.getElementById("selectorHoja");
   selector.innerHTML = "";
@@ -1359,25 +1406,18 @@ function generarDashboard() {
   let conteo = {};
 
   const data = datosPorHoja["REPORTE DIARIO"] || [];
-
-  // 🔥 Detectar el campo matrimonio UNA SOLA VEZ desde los headers
   const headerRD = headersPorHoja["REPORTE DIARIO"] || [];
+
   const campoTipoFijo = headerRD.find(h =>
     h.toLowerCase().replace(/\s+/g, "")
       .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
       .includes("matrimonio")
   );
 
-  // 🔥 Detectar el campo fecha UNA SOLA VEZ
   const campoFechaFijo = headerRD.find(h =>
     h.toLowerCase().includes("fecha") ||
     h.toLowerCase().includes("f.")
   );
-
-  // Debug — puedes quitarlo después
-  console.log("Campo tipo matrimonio detectado:", campoTipoFijo);
-  console.log("Campo fecha detectado:", campoFechaFijo);
-  console.log("Total filas REPORTE DIARIO:", data.length);
 
   if (!campoTipoFijo || !campoFechaFijo) {
     contenedor.innerHTML = `
@@ -1387,15 +1427,24 @@ function generarDashboard() {
     `;
     return;
   }
-  data.forEach(row => {
 
+  function colorPorTipo(tipo, i) {
+    if (tipo === "PAGADO") return "#2563eb";
+    if (tipo === "MASIVO") return "#06b6d4";
+    return COLORES_GRAFICOS[i % COLORES_GRAFICOS.length];
+  }
+
+  const nombresMeses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+  let tendenciaMesesFiltrada = {};
+
+  data.forEach(row => {
     let tipo = normalizarTipoMatrimonio(row[campoTipoFijo]);
     if (!tipo || tipo.trim() === "") return;
 
     let valorFecha = row[campoFechaFijo];
     if (!valorFecha || valorFecha.toString().trim() === "") return;
 
-    // 🔥 Usar fechaAISO que ya sabe que el formato es DD/MM/YYYY
     let fechaISO = fechaAISO(valorFecha.toString().trim());
     if (!fechaISO) return;
 
@@ -1405,56 +1454,134 @@ function generarDashboard() {
     totalMatrimonios++;
     if (!conteo[tipo]) conteo[tipo] = 0;
     conteo[tipo]++;
+
+    let mes = parseInt(fechaISO.split("-")[1], 10) - 1;
+    let nombreMes = nombresMeses[mes];
+    if (!tendenciaMesesFiltrada[nombreMes]) tendenciaMesesFiltrada[nombreMes] = 0;
+    tendenciaMesesFiltrada[nombreMes]++;
   });
-  // 🔥 Pon esto ANTES del data.forEach, no dentro
-  console.log("Ejemplo fecha guardada:", data[0]?.[campoFechaFijo]);
 
-  console.log("Total contado:", totalMatrimonios, "| Por tipo:", conteo);
+  let tendenciaMesesTotal = {};
 
-  // 🔥 TARJETA TOTAL
+  data.forEach(row => {
+    let tipo = normalizarTipoMatrimonio(row[campoTipoFijo]);
+    if (!tipo || tipo.trim() === "") return;
+
+    let valorFecha = row[campoFechaFijo];
+    if (!valorFecha || valorFecha.toString().trim() === "") return;
+
+    let fechaISO = fechaAISO(valorFecha.toString().trim());
+    if (!fechaISO) return;
+
+    let mes = parseInt(fechaISO.split("-")[1], 10) - 1;
+    let nombreMes = nombresMeses[mes];
+    if (!tendenciaMesesTotal[nombreMes]) tendenciaMesesTotal[nombreMes] = 0;
+    tendenciaMesesTotal[nombreMes]++;
+  });
+
+  // ── TARJETA TOTAL ──
   contenedor.innerHTML += `
-    <div class="col-md-3">
-      <div class="card text-center shadow" style="background:#FFA500; color:white;">
-        <div class="card-body">
-          <h3>${totalMatrimonios}</h3>
-          <p>Matrimonios</p>
-        </div>
+    <div class="col-auto mb-3">
+      <div style="background:#f97316; border-radius:10px; padding:7px 14px; min-width:160px;">
+        <div style="color:rgba(255,255,255,0.75); font-size:11px; margin-bottom:3px;">Total matrimonios</div>
+        <div style="color:#fff; font-size:26px; font-weight:500; line-height:1;">${totalMatrimonios}</div>
+        <div style="color:rgba(255,255,255,0.8); font-size:11px; margin-top:4px;">período seleccionado</div>
       </div>
     </div>
   `;
 
-  // 🔥 TARJETAS POR TIPO
+  // ── TARJETAS POR TIPO ──
   Object.keys(conteo).forEach((tipo, i) => {
-
-    let color;
-    if (tipo === "MASIVO") {
-      color = "#51D1F6";
-    } else if (tipo === "PAGADO") {
-      color = "#0d6efd";
-    } else {
-      color = COLORES_GRAFICOS[i % COLORES_GRAFICOS.length];
-    }
-
+    const color = colorPorTipo(tipo, i);
+    const pct = totalMatrimonios > 0 ? ((conteo[tipo] / totalMatrimonios) * 100).toFixed(1) : 0;
     contenedor.innerHTML += `
-      <div class="col-md-3">
-        <div class="card text-center shadow"
-             style="cursor:pointer; background:${color}; color:white;"
+      <div class="col-auto mb-3">
+        <div style="background:${color}; border-radius:10px; padding:7px 14px; cursor:pointer; min-width:160px;"
              onclick="filtrarPorTipo('${tipo}')">
-          <div class="card-body">
-            <h3>${conteo[tipo]}</h3>
-            <p>${tipo}</p>
-          </div>
+          <div style="color:rgba(255,255,255,0.75); font-size:11px; margin-bottom:3px;">${tipo}</div>
+          <div style="color:#fff; font-size:26px; font-weight:500; line-height:1;">${conteo[tipo]}</div>
+          <div style="color:rgba(255,255,255,0.8); font-size:11px; margin-top:4px;">${pct}% del total</div>
         </div>
       </div>
     `;
   });
 
-  let labels = Object.keys(conteo);
-  let valores = Object.values(conteo);
+  // ── GRÁFICOS: barras + torta arriba, tendencia abajo ──
+  const mesesOrdenados = nombresMeses.filter(m => tendenciaMesesTotal[m]);
+  const valoresTendencia = mesesOrdenados.map(m => tendenciaMesesTotal[m]);
 
+  contenedor.innerHTML += `
+    <div class="col-12 mb-3">
+      <div class="row g-3">
+
+        <div class="col-md-4">
+          <div style="background:#f8fafc; border:0.5px solid #e2e8f0; border-radius:12px; padding:14px;">
+            <div style="font-size:13px; font-weight:500; color:#1e293b; margin-bottom:2px;">Frecuencia</div>
+            <div style="font-size:11px; color:#94a3b8; margin-bottom:8px;"></div>
+            <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:8px;">
+              ${Object.keys(conteo).map((tipo, i) => `
+                <span style="display:flex; align-items:center; gap:5px; font-size:11px; color:#64748b;">
+                  <span style="width:10px;height:10px;border-radius:2px;background:${colorPorTipo(tipo,i)};flex-shrink:0;"></span>
+                  ${tipo} ${totalMatrimonios > 0 ? ((conteo[tipo]/totalMatrimonios)*100).toFixed(1) : 0}%
+                </span>
+              `).join("")}
+            </div>
+            <div style="position:relative; width:100%; height:190px;">
+              <canvas id="graficoBarras" role="img" aria-label="Gráfico de barras de tipos de matrimonio"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div style="background:#f8fafc; border:0.5px solid #e2e8f0; border-radius:12px; padding:14px;">
+            <div style="font-size:13px; font-weight:500; color:#1e293b; margin-bottom:2px;">Vista porcentual</div>
+            <div style="font-size:11px; color:#94a3b8; margin-bottom:8px;"></div>
+            <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:8px;">
+              ${Object.keys(conteo).map((tipo, i) => `
+                <span style="display:flex; align-items:center; gap:5px; font-size:11px; color:#64748b;">
+                  <span style="width:10px;height:10px;border-radius:2px;background:${colorPorTipo(tipo,i)};flex-shrink:0;"></span>
+                  ${tipo}
+                </span>
+              `).join("")}
+            </div>
+            <div style="position:relative; width:100%; height:190px;">
+              <canvas id="graficoTorta" role="img" aria-label="Gráfico de torta de tipos de matrimonio"></canvas>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="col-md-8 mb-3">
+      <div style="background:#f8fafc; border:0.5px solid #e2e8f0; border-radius:12px; padding:14px;">
+        <div style="font-size:13px; font-weight:500; color:#1e293b; margin-bottom:2px;">Tendencia mensual</div>
+        <div style="font-size:11px; color:#94a3b8; margin-bottom:8px;">Evolución de todos los registros por mes</div>
+        <div style="display:flex; gap:12px; margin-bottom:8px;">
+          <span style="display:flex; align-items:center; gap:5px; font-size:11px; color:#64748b;">
+            <span style="width:10px;height:10px;border-radius:2px;background:#f97316;flex-shrink:0;"></span>
+            Total matrimonios
+          </span>
+        </div>
+        <div style="position:relative; width:100%; height:170px;">
+          <canvas id="graficoTendencia" role="img" aria-label="Gráfico de tendencia mensual de matrimonios"></canvas>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ── Destruir gráficos anteriores ──
   if (window.graficoBarra) window.graficoBarra.destroy();
-  if (window.graficoPie) window.graficoPie.destroy();
+  if (window.graficoPie)   window.graficoPie.destroy();
+  if (window.graficoLinea) window.graficoLinea.destroy();
 
+  const labels  = Object.keys(conteo);
+  const valores = Object.values(conteo);
+  const colores = labels.map((t, i) => colorPorTipo(t, i));
+  const gridC   = "rgba(0,0,0,0.06)";
+  const tickC   = "#94a3b8";
+
+  // ── Gráfico de barras ──
   const ctxBarra = document.getElementById("graficoBarras");
   if (ctxBarra) {
     window.graficoBarra = new Chart(ctxBarra, {
@@ -1464,45 +1591,34 @@ function generarDashboard() {
         datasets: [{
           label: "Matrimonios",
           data: valores,
-          backgroundColor: labels.map(t =>
-            t === "MASIVO" ? "#51D1F6" : t === "PAGADO" ? "#0d6efd" : COLORES_GRAFICOS[0]
-          )
+          backgroundColor: colores,
+          borderRadius: 6,
+          borderSkipped: false
         }]
       },
       options: {
         responsive: true,
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: function (context) {
-                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                const valor = context.parsed.y;
-                const porcentaje = ((valor / total) * 100).toFixed(1);
-                return ` ${valor} (${porcentaje}%)`;
-              }
-            }
-          },
-          datalabels: {
-            display: false  // no usar datalabels en barras, usamos el plugin nativo
-          }
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: tickC, font: { size: 11 } } },
+          y: { grid: { color: gridC },   ticks: { color: tickC, font: { size: 11 } } }
         }
       },
       plugins: [{
-        id: 'porcentajeBarras',
+        id: "porcentajeBarras",
         afterDatasetsDraw(chart) {
           const { ctx, data } = chart;
           const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-
           chart.getDatasetMeta(0).data.forEach((bar, i) => {
             const valor = data.datasets[0].data[i];
-            const porcentaje = ((valor / total) * 100).toFixed(1) + "%";
-
+            const pct = ((valor / total) * 100).toFixed(1) + "%";
             ctx.save();
-            ctx.font = "bold 13px Segoe UI";
+            ctx.font = "bold 12px Segoe UI";
             ctx.fillStyle = "#1e293b";
             ctx.textAlign = "center";
             ctx.textBaseline = "bottom";
-            ctx.fillText(porcentaje, bar.x, bar.y - 4);
+            ctx.fillText(pct, bar.x, bar.y - 4);
             ctx.restore();
           });
         }
@@ -1510,6 +1626,7 @@ function generarDashboard() {
     });
   }
 
+  // ── Gráfico de torta ──
   const ctxPie = document.getElementById("graficoTorta");
   if (ctxPie) {
     window.graficoPie = new Chart(ctxPie, {
@@ -1518,51 +1635,102 @@ function generarDashboard() {
         labels,
         datasets: [{
           data: valores,
-          backgroundColor: labels.map(t =>
-            t === "MASIVO" ? "#51D1F6" : t === "PAGADO" ? "#0d6efd" : COLORES_GRAFICOS[0]
-          )
+          backgroundColor: colores,
+          borderWidth: 2,
+          borderColor: "#ffffff",
+          hoverOffset: 8
         }]
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
+          legend: { display: false },
           tooltip: {
             callbacks: {
-              label: function (context) {
-                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                const valor = context.parsed;
-                const porcentaje = ((valor / total) * 100).toFixed(1);
-                return ` ${context.label}: ${valor} (${porcentaje}%)`;
+              label: (ctx) => {
+                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                const pct = ((ctx.parsed / total) * 100).toFixed(1);
+                return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`;
               }
             }
-          },
-          legend: {
-            position: 'bottom'
           }
         }
       },
       plugins: [{
-        id: 'porcentajePie',
+        id: "porcentajePie",
         afterDatasetsDraw(chart) {
           const { ctx, data } = chart;
           const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-          const meta = chart.getDatasetMeta(0);
-
-          meta.data.forEach((arc, i) => {
+          chart.getDatasetMeta(0).data.forEach((arc, i) => {
             const valor = data.datasets[0].data[i];
-            const porcentaje = ((valor / total) * 100).toFixed(1) + "%";
-
+            const pct = ((valor / total) * 100).toFixed(1) + "%";
             const angle = (arc.startAngle + arc.endAngle) / 2;
             const radius = (arc.innerRadius + arc.outerRadius) / 2;
             const x = arc.x + Math.cos(angle) * radius;
             const y = arc.y + Math.sin(angle) * radius;
-
             ctx.save();
             ctx.font = "bold 13px Segoe UI";
             ctx.fillStyle = "#ffffff";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(porcentaje, x, y);
+            ctx.fillText(pct, x, y);
+            ctx.restore();
+          });
+        }
+      }]
+    });
+  }
+
+  // ── Gráfico de tendencia mensual ──
+  // ── Gráfico de tendencia mensual ──
+  const ctxLinea = document.getElementById("graficoTendencia");
+  if (ctxLinea && mesesOrdenados.length > 0) {
+    window.graficoLinea = new Chart(ctxLinea, {
+      type: "line",
+      data: {
+        labels: mesesOrdenados,
+        datasets: [{
+          label: "Matrimonios",
+          data: valoresTendencia,
+          borderColor: "#f97316",
+          backgroundColor: "rgba(249,115,22,0.08)",
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: "#f97316",
+          pointRadius: 5,
+          pointHoverRadius: 7
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: tickC, font: { size: 11 } }
+          },
+          y: {
+            grid: { color: gridC },
+            ticks: { color: tickC, font: { size: 11 } },
+            min: 0
+          }
+        }
+      },
+      // 🔥 NUEVO: etiquetas encima de cada punto
+      plugins: [{
+        id: "etiquetasPuntos",
+        afterDatasetsDraw(chart) {
+          const { ctx, data } = chart;
+          chart.getDatasetMeta(0).data.forEach((punto, i) => {
+            const valor = data.datasets[0].data[i];
+            ctx.save();
+            ctx.font = "bold 11px Segoe UI";
+            ctx.fillStyle = "#f97316";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "bottom";
+            ctx.fillText(valor, punto.x, punto.y - 6);
             ctx.restore();
           });
         }
@@ -1604,13 +1772,15 @@ function mostrarSoloHoja(hoja) {
 
   let headers = headersPorHoja[hoja];
 
-  let headersVisibles = headers.filter(h => {
-    return data.some(row => {
-      let valor = row[h];
-      return valor !== null && valor !== undefined && valor.toString().trim() !== "";
-    });
-  });
+  const COLUMNAS_SIEMPRE_VISIBLES = ["CMP ANULADO", "MOTIVO DE ANULACION"];
 
+let headersVisibles = headers.filter(h => {
+  if (COLUMNAS_SIEMPRE_VISIBLES.includes(h.trim().toUpperCase())) return true;
+  return data.some(row => {
+    let valor = row[h];
+    return valor !== null && valor !== undefined && valor.toString().trim() !== "";
+  });
+});
   // En mostrarSoloHoja() — reemplaza el bloque let html = `...`
   let html = `
   <div class="mb-5">
@@ -1695,8 +1865,6 @@ function detectarCamposCompartidos() {
 }
 
 async function cargarDesdeFirebase() {
-
-
   const COLECCIONES = {
     "REPORTE DIARIO": "reporte_diario",
     "REGISTRO DE ATENCION": "registro_atencion",
@@ -1704,29 +1872,40 @@ async function cargarDesdeFirebase() {
   };
 
   for (let hoja in COLECCIONES) {
-
     const snapshot = await fb.getDocs(
       fb.collection(db, COLECCIONES[hoja])
     );
 
-    // 🔥 Obtener los N° de orden ya existentes en Sheets para no duplicar
     const campoOrden = headersPorHoja[hoja]?.find(h => esCampoOrden(h));
-    const ordenesExistentes = new Set(
-      datosPorHoja[hoja]
-        .filter(r => !r._id) // solo los de Sheets
-        .map(r => campoOrden ? String(r[campoOrden]).trim() : null)
-        .filter(Boolean)
-    );
 
-    let contador = datosPorHoja[hoja]?.length || 0;
+    // 🔥 Máximo N° que ya existe en Sheets
+    const maxEnSheets = datosPorHoja[hoja]
+      .filter(r => !r._id)
+      .reduce((max, r) => {
+        const n = Number(r[campoOrden] || 0);
+        return n > max ? n : max;
+      }, 0);
+
+    console.log(`📋 ${hoja}: Sheets tiene hasta N°${maxEnSheets}`);
+
+    let contador = datosPorHoja[hoja].length;
 
     snapshot.forEach(doc => {
       const docData = doc.data();
 
-      // 🔥 Si el N° ya existe en Sheets, no agregar (es duplicado)
+      // Encontrar el valor del campo orden en el documento Firebase
+      let ordenDoc = 0;
       if (campoOrden) {
-        const ordenDoc = String(docData[campoOrden] || "").trim();
-        if (ordenesExistentes.has(ordenDoc)) return; // 🔥 SKIP duplicado
+        const claveEnDoc = Object.keys(docData).find(k => esCampoOrden(k));
+        ordenDoc = claveEnDoc
+          ? Number(docData[claveEnDoc] || 0)
+          : Number(docData[limpiarClave(campoOrden)] || docData[campoOrden] || 0);
+      }
+
+      // 🔥 Solo agregar si su N° es MAYOR al máximo de Sheets
+      if (ordenDoc <= maxEnSheets) {
+        console.log(`⏭️ Saltando N°${ordenDoc} (ya está en Sheets)`);
+        return;
       }
 
       datosPorHoja[hoja].push({
@@ -1736,20 +1915,21 @@ async function cargarDesdeFirebase() {
       });
     });
 
+    // Ordenar todo por N° de orden
     if (campoOrden) {
-      datosPorHoja[hoja].sort((a, b) =>
-        Number(a[campoOrden] || 0) - Number(b[campoOrden] || 0)
-      );
+      const claveL = limpiarClave(campoOrden);
+      datosPorHoja[hoja].sort((a, b) => {
+        const va = Number(a[campoOrden] || a[claveL] || 0);
+        const vb = Number(b[campoOrden] || b[claveL] || 0);
+        return va - vb;
+      });
     } else {
-      datosPorHoja[hoja].sort((a, b) =>
-        (a._orden || 0) - (b._orden || 0)
-      );
+      datosPorHoja[hoja].sort((a, b) => (a._orden || 0) - (b._orden || 0));
     }
+
+    console.log(`✅ ${hoja}: ${datosPorHoja[hoja].length} registros totales`);
   }
-
-  console.log("🔥 Firebase cargado. REPORTE DIARIO total:", datosPorHoja["REPORTE DIARIO"]?.length);
 }
-
 function mostrarToast(mensaje, tipo = "success") {
 
   const container = document.getElementById("toastContainer");
@@ -1784,28 +1964,80 @@ function controlarBotonesFlotantes(seccion) {
   }
 }
 function hacerArrastrable(el) {
-
   let offsetX = 0;
   let offsetY = 0;
   let moviendo = false;
 
   el.addEventListener("mousedown", (e) => {
+    // 🔥 Si no tiene left definido, calcularlo desde getBoundingClientRect
+    if (!el.style.left || el.style.left === "auto" || el.style.left === "") {
+      const rect = el.getBoundingClientRect();
+      el.style.left = rect.left + "px";
+      el.style.top  = rect.top  + "px";
+      el.style.right = "auto";
+    }
+
     moviendo = true;
-    offsetX = e.clientX - el.offsetLeft;
-    offsetY = e.clientY - el.offsetTop;
+    offsetX = e.clientX - el.getBoundingClientRect().left;
+    offsetY = e.clientY - el.getBoundingClientRect().top;
     el.style.cursor = "grabbing";
+    e.preventDefault();
   });
 
   document.addEventListener("mousemove", (e) => {
     if (!moviendo) return;
 
-    el.style.left = (e.clientX - offsetX) + "px";
-    el.style.top = (e.clientY - offsetY) + "px";
+    // 🔥 Limitar dentro de la ventana
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    let newLeft = e.clientX - offsetX;
+    let newTop  = e.clientY - offsetY;
+
+    newLeft = Math.max(0, Math.min(newLeft, window.innerWidth  - w));
+    newTop  = Math.max(0, Math.min(newTop,  window.innerHeight - h));
+
+    el.style.left = newLeft + "px";
+    el.style.top  = newTop  + "px";
   });
 
   document.addEventListener("mouseup", () => {
     moviendo = false;
     el.style.cursor = "grab";
+  });
+
+  // 🔥 SOPORTE TÁCTIL (móvil)
+  el.addEventListener("touchstart", (e) => {
+    if (!el.style.left || el.style.left === "auto" || el.style.left === "") {
+      const rect = el.getBoundingClientRect();
+      el.style.left  = rect.left + "px";
+      el.style.top   = rect.top  + "px";
+      el.style.right = "auto";
+    }
+    const t = e.touches[0];
+    offsetX = t.clientX - el.getBoundingClientRect().left;
+    offsetY = t.clientY - el.getBoundingClientRect().top;
+    moviendo = true;
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener("touchmove", (e) => {
+    if (!moviendo) return;
+    const t = e.touches[0];
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    let newLeft = t.clientX - offsetX;
+    let newTop  = t.clientY - offsetY;
+
+    newLeft = Math.max(0, Math.min(newLeft, window.innerWidth  - w));
+    newTop  = Math.max(0, Math.min(newTop,  window.innerHeight - h));
+
+    el.style.left = newLeft + "px";
+    el.style.top  = newTop  + "px";
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener("touchend", () => {
+    moviendo = false;
   });
 }
 function mostrarSeccion(id) {

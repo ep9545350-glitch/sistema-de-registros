@@ -938,3 +938,521 @@ thead {
         padding: 6px 10px;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   📋 FORMULARIO MEJORADO — agrega esto al final de estilos.css
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Encabezado de sección ── */
+.form-seccion-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 28px;
+  margin-bottom: 4px;
+  animation: formFadeUp 0.5s ease both;
+}
+
+.form-seccion-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 18px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+}
+
+.form-seccion-line {
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+}
+
+/* ── Tarjeta de campo ── */
+.form-campo-wrap {
+  animation: formFadeUp 0.45s ease both;
+}
+
+.form-campo-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #ffffff;
+  border: 1.5px solid #e8ecf3;
+  border-radius: 14px;
+  padding: 12px 14px;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.form-campo-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(99,102,241,0.03), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.form-campo-card:hover {
+  border-color: #c7d0e8;
+  box-shadow: 0 4px 16px rgba(99,102,241,0.08);
+  transform: translateY(-2px);
+}
+
+.form-campo-card:hover::before {
+  opacity: 1;
+}
+
+.form-campo-card.focused {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.12), 0 4px 16px rgba(99,102,241,0.1);
+  transform: translateY(-2px);
+}
+
+.form-campo-card.es-fecha {
+  border-left: 3px solid #0ea5e9;
+}
+
+/* ── Icono del campo ── */
+.form-campo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f1f5ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: background 0.2s;
+}
+
+.form-campo-card.focused .form-campo-icon {
+  background: #ede9fe;
+}
+
+/* ── Cuerpo: label + input ── */
+.form-campo-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.form-campo-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.form-badge-global {
+  display: inline-block;
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.form-campo-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #1e293b;
+  padding: 0;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.form-campo-input::placeholder {
+  color: #cbd5e1;
+  font-weight: 400;
+}
+
+.form-campo-input[type="date"] {
+  color: #475569;
+}
+
+/* ── Botón Agregar mejorado ── */
+#formulario .btn-agregar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 11px 28px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-top: 20px;
+}
+
+#formulario .btn-agregar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(99,102,241,0.45);
+}
+
+#formulario .btn-agregar:active {
+  transform: scale(0.98);
+}
+
+/* ── Animación entrada ── */
+@keyframes formFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .form-campo-card {
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+
+  .form-campo-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
+    border-radius: 8px;
+  }
+
+  .form-campo-input {
+    font-size: 13px;
+  }
+
+  .form-seccion-pill {
+    font-size: 12px;
+    padding: 6px 14px;
+  }
+}
+/* ═══════════════════════════════════════════════════════════════
+   📋 VER TABLA MEJORADA — agrega esto al final de estilos.css
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Título de sección ── */
+#tabla h5 {
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px !important;
+}
+
+/* ── Card principal de tabla con fondo suave ── */
+#tabla .card-body {
+  background: linear-gradient(160deg, #f8faff 0%, #ffffff 100%) !important;
+  border-radius: 18px !important;
+  padding: 24px !important;
+}
+
+/* ── Selector de hoja mejorado ── */
+#selectorHoja {
+  border: 1.5px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  padding: 10px 16px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #334155 !important;
+  background: white !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+  cursor: pointer;
+  margin-bottom: 16px !important;
+}
+
+#selectorHoja:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.12) !important;
+  outline: none !important;
+}
+
+/* ── Panel de filtros rediseñado ── */
+#tabla .row.g-2 {
+  background: #f1f5ff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  padding: 16px !important;
+  box-shadow: none !important;
+  gap: 8px 0 !important;
+}
+
+#tabla .row.g-2 .form-control,
+#tabla .row.g-2 .form-select {
+  border: 1.5px solid #dde3f0 !important;
+  border-radius: 10px !important;
+  font-size: 13.5px !important;
+  padding: 9px 12px !important;
+  background: white !important;
+  color: #334155 !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
+}
+
+#tabla .row.g-2 .form-control:focus,
+#tabla .row.g-2 .form-select:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.1) !important;
+  outline: none !important;
+}
+
+/* ── Botones de acción filtros ── */
+#tabla .d-flex.gap-2 {
+  margin-top: 4px;
+}
+
+#tabla .d-flex.gap-2 .btn {
+  border-radius: 11px !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  padding: 9px 18px !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.15s, box-shadow 0.15s !important;
+  border: none !important;
+}
+
+#tabla .d-flex.gap-2 .btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15) !important;
+}
+
+#tabla .d-flex.gap-2 .btn-warning {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24) !important;
+  color: #1c1400 !important;
+  box-shadow: 0 3px 10px rgba(245,158,11,0.3) !important;
+}
+
+#tabla .d-flex.gap-2 .btn-secondary {
+  background: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+#tabla .d-flex.gap-2 .btn-danger {
+  background: linear-gradient(135deg, #ef4444, #f87171) !important;
+  color: white !important;
+  box-shadow: 0 3px 10px rgba(239,68,68,0.3) !important;
+}
+
+/* ── Contenedor tabla rediseñado ── */
+#contenedorTabla {
+  background: white !important;
+  border-radius: 16px !important;
+  padding: 0 !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.07) !important;
+  border: 1px solid #e8ecf5 !important;
+  overflow: hidden !important;
+  margin-top: 16px;
+}
+
+/* ── Header sticky de cada tabla ── */
+.tabla-header-sticky {
+  background: linear-gradient(135deg, #1e293b, #334155) !important;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.15) !important;
+  border-radius: 0 !important;
+}
+
+.tabla-header-sticky h3 {
+  background: transparent !important;
+  color: white !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.3px !important;
+  padding: 14px 18px !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Scroll superior más fino ── */
+.scroll-superior {
+  height: 10px !important;
+  background: #f1f5f9 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+/* ── Thead mejorado ── */
+.tabla-scroll thead th {
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.6px !important;
+  text-transform: uppercase !important;
+  padding: 12px 14px !important;
+  border: 1px solid #2d3f55 !important;
+  box-shadow: 0 2px 0 #2d3f55 !important;
+  white-space: nowrap;
+}
+
+/* ── Filas de datos ── */
+#contenedorTabla tbody tr {
+  transition: background 0.15s, transform 0.1s;
+  cursor: pointer;
+}
+
+#contenedorTabla tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+
+#contenedorTabla tbody tr:nth-child(even) {
+  background: #f8faff !important;
+}
+
+#contenedorTabla tbody tr:hover {
+  background: #eef2ff !important;
+  transform: none;
+}
+
+#contenedorTabla td {
+  padding: 10px 14px !important;
+  font-size: 12.5px !important;
+  color: #334155 !important;
+  border: 1px solid #f0f4fa !important;
+  vertical-align: middle !important;
+}
+
+/* ── Fila seleccionada más visible ── */
+.table tbody tr.fila-seleccionada td {
+  background: linear-gradient(90deg, #fef3c7, #fef9ec) !important;
+  border-color: #fbbf24 !important;
+  color: #92400e !important;
+  font-weight: 500 !important;
+}
+
+/* ── Paginación mejorada ── */
+#paginacion {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px !important;
+  align-items: center;
+}
+
+#paginacion .btn {
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 9px 20px !important;
+  background: white !important;
+  color: #475569 !important;
+  border: 1.5px solid #e2e8f0 !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06) !important;
+  transition: all 0.2s !important;
+}
+
+#paginacion .btn:hover {
+  border-color: #6366f1 !important;
+  color: #6366f1 !important;
+  box-shadow: 0 4px 12px rgba(99,102,241,0.15) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* ── Botones flotantes rediseñados ── */
+.botones-flotantes {
+  background: rgba(15, 23, 42, 0.92) !important;
+  backdrop-filter: blur(16px) !important;
+  border-radius: 18px !important;
+  padding: 16px !important;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.07) !important;
+  gap: 8px !important;
+}
+
+.botones-flotantes button {
+  border-radius: 12px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  padding: 9px 14px !important;
+  letter-spacing: 0.2px;
+  border: none !important;
+}
+
+.botones-flotantes .btn-warning {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24) !important;
+  color: #1c1400 !important;
+  box-shadow: 0 3px 10px rgba(245,158,11,0.35) !important;
+}
+
+.botones-flotantes .btn-success {
+  background: linear-gradient(135deg, #10b981, #34d399) !important;
+  color: white !important;
+  box-shadow: 0 3px 10px rgba(16,185,129,0.35) !important;
+}
+
+.botones-flotantes .btn-danger {
+  background: linear-gradient(135deg, #ef4444, #f87171) !important;
+  color: white !important;
+  box-shadow: 0 3px 10px rgba(239,68,68,0.35) !important;
+}
+
+/* ── Etiqueta indicadora en botones flotantes ── */
+.botones-flotantes::before {
+  content: "ACCIONES";
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 2px;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  margin-bottom: 4px;
+}
+
+/* ── Responsive móvil: quitar etiqueta en barra inferior ── */
+@media (max-width: 768px) {
+  .botones-flotantes::before {
+    display: none;
+  }
+
+  .botones-flotantes {
+    background: rgba(15, 23, 42, 0.97) !important;
+    border-radius: 20px 20px 0 0 !important;
+  }
+
+  #contenedorTabla td {
+    font-size: 11px !important;
+    padding: 8px 10px !important;
+  }
+
+  .tabla-header-sticky h3 {
+    font-size: 13px !important;
+    padding: 10px 14px !important;
+  }
+}

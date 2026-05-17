@@ -453,6 +453,39 @@ html, body {
   color: var(--text-lo);
 }
 
+/* ── Estrellas fugaces ── */
+.shooting-star {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #fff;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+}
+
+.shooting-star::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 120px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255,255,255,0), var(--star-color), rgba(255,255,255,0));
+  transform-origin: right center;
+}
+
+@keyframes shootingStar {
+  0%   { opacity: 0; transform: translate(0, 0) rotate(var(--angle)); }
+  5%   { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--angle)); }
+}
+
 /* ── Responsive ── */
 @media (max-width: 480px) {
   html, body { align-items: flex-start; padding-top: 40px; }
